@@ -1,0 +1,52 @@
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor and IDE folders
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Local Python environments and caches
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+
+# Node dependencies and build output, in case modern enhancement is added later
+node_modules/
+dist/
+build/
+.parcel-cache/
+.vite/
+
+# PHP and local server/runtime files
+vendor/
+*.log
+error_log
+
+# Environment and local configuration
+.env
+.env.*
+!.env.example
+config.local.php
+
+# Database dumps and local database files
+*.sql
+*.sqlite
+*.sqlite3
+*.db
+
+# User uploads and generated files
+uploads/
+tmp/
+temp/
+cache/
+
+# OS thumbnails
+Thumbs.db
+ehthumbs.db
