@@ -1,6 +1,11 @@
 <?php
 require __DIR__ . '/includes/cart.php';
 
+if (!isset($_SESSION['user_id'])) {
+    header('Location: login_register.php');              // checking out needs an account
+    exit;
+}
+
 // Order summary: everything comes from the session cart
 $summary = cart_summary();
 
@@ -11,22 +16,15 @@ $notes   = '';
 // Delivery details start from the logged-in user's saved address and phone, and stay editable
 $address = '';
 $phone   = '';
-if (isset($_SESSION['user_id'])) {
-    $stmt = db()->prepare('SELECT address, phone FROM users WHERE user_id = ?');
-    $stmt->execute([$_SESSION['user_id']]);
-    $user = $stmt->fetch();
-    if ($user) {
-        $address = (string) $user['address'];
-        $phone   = (string) $user['phone'];
-    }
+$stmt = db()->prepare('SELECT address, phone FROM users WHERE user_id = ?');
+$stmt->execute([$_SESSION['user_id']]);
+$user = $stmt->fetch();
+if ($user) {
+    $address = (string) $user['address'];
+    $phone   = (string) $user['phone'];
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'place_order') {
-    if (!isset($_SESSION['user_id'])) {
-        header('Location: login_register.php');          // an order belongs to a user
-        exit;
-    }
-
     $address = trim($_POST['address'] ?? '');
     $phone   = preg_replace('/\s+/', '', $_POST['phone'] ?? '');
     $payment = $_POST['payment'] ?? '';
@@ -125,7 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'place
               <label for="address">Delivery address</label>
               <textarea id="address" name="address" required<?= isset($errors['address']) ? ' class="bad"' : '' ?>><?= e($address) ?></textarea>
               <p class="error-text" id="address-error" role="alert"><?= e($errors['address'] ?? '') ?></p>
-              <p class="hint"><?= isset($_SESSION['user_id']) ? 'Pre-filled from your account. Edit for this order only.' : '<a class="back-link" href="login_register.php">Log in</a> to fill this in from your account.' ?></p>
+              <p class="hint">Pre-filled from your account. Edit for this order only.</p>
             </div>
             <div class="field phone-field">
               <label for="phone">Contact phone</label>

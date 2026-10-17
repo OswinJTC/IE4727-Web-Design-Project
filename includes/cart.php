@@ -57,6 +57,11 @@ function cart_handle_request(string $redirect): void
         return;
     }
 
+    if (!isset($_SESSION['user_id'])) {
+        header('Location: login_register.php');          // only logged-in users can use the cart
+        exit;
+    }
+
     $id     = filter_var($raw, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
     $qty    = filter_var($_GET['qty'] ?? 1, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => CART_MAX_PER_DISH]]);
     $action = $_GET['action'] ?? 'add';

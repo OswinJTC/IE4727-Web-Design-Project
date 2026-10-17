@@ -23,6 +23,10 @@
 
         fetch(link.href)
             .then(function (response) {
+                if (response.redirected && response.url.indexOf('login_register.php') !== -1) {
+                    window.location.href = response.url;     // not logged in: go to the login page
+                    return;
+                }
                 if (!response.ok) throw new Error('Request failed');
                 showNote('Added ' + added + ' to your cart. ', true);
             })

@@ -2,6 +2,7 @@
 require __DIR__ . '/includes/functions.php';
 require __DIR__ . '/includes/cart.php';
 
+cart_handle_request('index.php');                        // the + buttons below add to the cart (logged-in users only)
 $summary = cart_summary();                   // for the cart badge in the navbar
 
 // Top 4 most ordered dishes (cancelled orders do not count). Dishes never ordered
