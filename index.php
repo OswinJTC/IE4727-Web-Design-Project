@@ -1,3 +1,11 @@
+<?php
+require __DIR__ . '/includes/functions.php';
+require __DIR__ . '/includes/db.php';
+
+
+
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -21,10 +29,10 @@
       </div>
       <nav class="nav">
         <a class="active" href="index.php">Home</a>
-        <a href="menu.html">Menu</a>
+        <a href="menu.php">Menu</a>
         <a href="#">Contact</a>
       </nav>
-      <a class="btn light" href="login_register.php">Log in</a>
+      <?php require __DIR__ . '/includes/auth_nav.php'; ?>
     </header>
 
     <main class="container">
@@ -34,8 +42,7 @@
           <h1>Hot meals from our kitchen, straight to your door.</h1>
           <p>Browse the menu, build your cart and follow your order from the kitchen to your doorstep.</p>
           <div class="hero-actions">
-            <a class="btn" href="menu.html">Browse the menu <span>-></span></a>
-            <a class="btn ghost" href="#how">How it works</a>
+            <a class="btn" href="menu.php">Browse the menu <span>-></span></a>
           </div>
         </div>
       </section>
@@ -47,19 +54,19 @@
           </div>
         </div>
         <div class="category-grid">
-          <a class="category-card" href="menu.html">
+          <a class="category-card" href="menu.php">
             <span class="food-icon t-peach"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12h14a7 7 0 0 1-14 0Z"/><path d="M8 7v2M14 6v3"/></svg></span>
             <span><h3>Mains</h3><p>Rice, noodles and bowls</p></span>
           </a>
-          <a class="category-card" href="menu.html">
+          <a class="category-card" href="menu.php">
             <span class="food-icon t-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 11h10l-1 8H8l-1-8Z"/><path d="M10 11V6M14 11V5"/></svg></span>
             <span><h3>Sides</h3><p>Snacks to share</p></span>
           </a>
-          <a class="category-card" href="menu.html">
+          <a class="category-card" href="menu.php">
             <span class="food-icon t-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m8 8 1 12h6l1-12H8Z"/><path d="M10 8h8M14 8l2-4"/></svg></span>
             <span><h3>Drinks</h3><p>Coffee, tea and juices</p></span>
           </a>
-          <a class="category-card" href="menu.html">
+          <a class="category-card" href="menu.php">
             <span class="food-icon t-pink"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 13h14l-1 6H6l-1-6Z"/><path d="M8 13a4 4 0 0 1 8 0"/><path d="M12 7V4"/></svg></span>
             <span><h3>Desserts</h3><p>Something sweet</p></span>
           </a>
@@ -72,7 +79,7 @@
             <h2>Featured dishes</h2>
             <p>Picked by our chefs this week</p>
           </div>
-          <a class="see-all" href="menu.html">See full menu -></a>
+          <a class="see-all" href="menu.php">See full menu -></a>
         </div>
         <div class="dish-grid">
           <article class="dish-card small">
@@ -136,7 +143,7 @@
           <div class="brand"><span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 12h12a6 6 0 0 1-12 0Z"/><path d="M8 6v2M14 5v3"/></svg></span>FoodHub</div>
           <p>Freshly cooked meals from our kitchen to<br>your door.</p>
         </div>
-        <div><h3>Explore</h3><p><a href="menu.html">Menu</a><br><a href="orders.html">My orders</a><br><a href="#">Contact</a></p></div>
+        <div><h3>Explore</h3><p><a href="menu.php">Menu</a><br><a href="orders.php">My orders</a><br><a href="#">Contact</a></p></div>
         <div><h3>Visit us</h3><p>[Restaurant address]</p><p>Daily, [opening hours]</p></div>
       </div>
       <div class="footer-bottom"><p>&copy; 2026 FoodHub</p></div>

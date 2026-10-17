@@ -501,3 +501,8 @@ input.error, input.bad { border-color: #e11d20; background: #fff9f9; }
 .success-card h1 { margin: 0 0 10px; font-size: 32px; }
 .success-card p { margin: 0 0 28px; color: var(--muted); }
 .success-card .btn { display: inline-flex; width: auto; padding: 0 28px; }
+
+/* Keep navbar items on one line */
+.topbar .nav a, .topbar .btn, .topbar .user-name { white-space: nowrap; }
+.topbar .user-name { margin-left: 0; }
+.topbar .search { min-width: 0; overflow: hidden; white-space: nowrap; }

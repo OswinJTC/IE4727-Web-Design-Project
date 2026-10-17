@@ -1,3 +1,4 @@
+<?php require __DIR__ . '/includes/functions.php'; ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -11,12 +12,12 @@
     <header class="topbar">
       <a class="brand" href="index.php"><span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 12h12a6 6 0 0 1-12 0Z"/><path d="M8 6v2M14 5v3"/></svg></span>FoodHub</a>
       <div class="search"><span class="search-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg></span><span>Search dishes, e.g. laksa</span></div>
-      <nav class="nav"><a href="index.php">Home</a><a class="active" href="menu.html">Menu</a><a href="orders.html">My orders</a><a href="#">Contact</a></nav>
-      <a class="cart" href="cart.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6h15l-2 8H8L6 3H3"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg><span>3</span></a>
-      <span class="avatar">AL</span><span class="user-name">Aisha</span>
+      <nav class="nav"><a href="index.php">Home</a><a class="active" href="menu.php">Menu</a><a href="orders.php">My orders</a><a href="#">Contact</a></nav>
+      <a class="cart" href="cart.php"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6h15l-2 8H8L6 3H3"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg><span>3</span></a>
+      <?php require __DIR__ . '/includes/auth_nav.php'; ?>
     </header>
     <main class="container">
-      <div class="breadcrumb"><a href="index.php">Home</a> / <a href="menu.html">Menu</a> / <a href="menu.html">Mains</a> / <strong>Curry laksa</strong></div>
+      <div class="breadcrumb"><a href="index.php">Home</a> / <a href="menu.php">Menu</a> / <a href="menu.php">Mains</a> / <strong>Curry laksa</strong></div>
       <section class="product">
         <div>
           <div class="product-visual t-green"><span class="food-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 12h14a7 7 0 0 1-14 0Z"/><path d="M8 7v2M14 6v3"/></svg></span></div>
@@ -31,7 +32,7 @@
             <div class="qty"><span>-</span><span>1</span><span>+</span></div>
             <a class="btn" href="#"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6h15l-2 8H8L6 3H3"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg> Add to cart - $7.20</a>
           </div>
-          <a class="back-link" href="menu.html">&lt; Back to menu</a>
+          <a class="back-link" href="menu.php">&lt; Back to menu</a>
           <div class="detail-grid">
             <div class="detail-card"><span class="mini-icon t-peach"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7h14v10H5z"/><path d="M8 12h8"/></svg></span><span><h3>Pay your way</h3><p>Cash, card on delivery or PayNow</p></span></div>
             <div class="detail-card"><span class="mini-icon t-peach"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><path d="M12 8v5l3 2"/></svg></span><span><h3>Track your order</h3><p>Live status in My orders</p></span></div>
@@ -39,7 +40,7 @@
         </div>
       </section>
 
-      <div class="more-row"><h2>More in Mains</h2><a class="see-all" href="menu.html">View all -></a></div>
+      <div class="more-row"><h2>More in Mains</h2><a class="see-all" href="menu.php">View all -></a></div>
       <section class="thumb-grid">
         <article class="thumb-card"><div class="image t-peach"></div><h3>Hainanese chicken rice</h3><div class="price">$5.50</div></article>
         <article class="thumb-card"><div class="image t-cream"></div><h3>Beef rendang bowl</h3><div class="price">$9.80</div></article>
@@ -50,7 +51,7 @@
     <footer class="footer">
       <div class="footer-main">
         <div><div class="brand"><span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 12h12a6 6 0 0 1-12 0Z"/><path d="M8 6v2M14 5v3"/></svg></span>FoodHub</div><p>Freshly cooked meals from our kitchen to<br>your door.</p></div>
-        <div><h3>Explore</h3><p><a href="menu.html">Menu</a><br><a href="orders.html">My orders</a><br><a href="#">Contact</a></p></div>
+        <div><h3>Explore</h3><p><a href="menu.php">Menu</a><br><a href="orders.php">My orders</a><br><a href="#">Contact</a></p></div>
         <div><h3>Visit us</h3><p>[Restaurant address]</p><p>Daily, [opening hours]</p></div>
       </div>
       <div class="footer-bottom"><p>&copy; 2026 FoodHub</p></div>

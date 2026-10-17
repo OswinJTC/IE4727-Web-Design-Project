@@ -125,7 +125,8 @@ if ($action === 'register') {
   <div class="page">
     <header class="topbar simple-header">
       <a class="brand" href="index.php"><span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 12h12a6 6 0 0 1-12 0Z"/><path d="M8 6v2M14 5v3"/></svg></span>FoodHub</a>
-      <nav class="nav"><a href="index.php">Home</a><a href="menu.html">Menu</a><a href="#">Contact</a></nav>
+      <nav class="nav"><a href="index.php">Home</a><a href="menu.php">Menu</a><a href="#">Contact</a></nav>
+      <?php if (isset($_SESSION['user_id'])) { require __DIR__ . '/includes/auth_nav.php'; } ?>
     </header>
     <main>
       <section class="signup-shell auth-shell">
@@ -176,7 +177,7 @@ if ($action === 'register') {
     <footer class="footer">
       <div class="footer-main">
         <div><div class="brand"><span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 12h12a6 6 0 0 1-12 0Z"/><path d="M8 6v2M14 5v3"/></svg></span>FoodHub</div><p>Freshly cooked meals from our kitchen to<br>your door.</p></div>
-        <div><h3>Explore</h3><p><a href="menu.html">Menu</a><br><a href="orders.html">My orders</a><br><a href="#">Contact</a></p></div>
+        <div><h3>Explore</h3><p><a href="menu.php">Menu</a><br><a href="orders.php">My orders</a><br><a href="#">Contact</a></p></div>
         <div><h3>Visit us</h3><p>[Restaurant address]</p><p>Daily, [opening hours]</p></div>
       </div>
       <div class="footer-bottom"><p>&copy; 2026 FoodHub</p></div>
