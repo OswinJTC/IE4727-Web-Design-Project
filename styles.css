@@ -530,3 +530,8 @@ a.add { display: grid; place-items: center; background: var(--brand); color: #ff
 .added-note a { text-decoration: underline; }
 .added-note:empty { display: none; }
 textarea.bad { border-color: #e11d20; background: #fff9f9; }
+.timeline .done { color: var(--ink); }
+.timeline .done .tl-dot { border-color: var(--brand); background: var(--brand); }
+.orders-table tbody tr[data-href] { cursor: pointer; }
+.orders-table tbody tr[data-href]:hover { background: #fbf7f3; }
+.orders-table tbody tr.selected:hover { background: #fff8f3; }

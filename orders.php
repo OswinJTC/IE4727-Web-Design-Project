@@ -1,4 +1,83 @@
-<?php require __DIR__ . '/includes/functions.php'; ?>
+<?php
+require __DIR__ . '/includes/cart.php';
+
+if (!isset($_SESSION['user_id'])) {
+    header('Location: login_register.php');              // orders belong to a logged-in user
+    exit;
+}
+
+// Cancel a pending order. The WHERE clause is the whole rule: it must be this user's order
+// and still Pending, so other people's orders and orders already being prepared are untouched.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'cancel_order') {
+    $cancelId = filter_var($_POST['order_id'] ?? '', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+    if ($cancelId !== false) {
+        $stmt = db()->prepare("UPDATE orders SET status = 'Cancelled' WHERE order_id = ? AND user_id = ? AND status = 'Pending'");
+        $stmt->execute([$cancelId, $_SESSION['user_id']]);
+        header('Location: orders.php?id=' . $cancelId);   // Post/Redirect/Get, showing the order's new status
+        exit;
+    }
+}
+
+// All of this user's orders, newest first, with how many items each has
+$stmt = db()->prepare(
+    'SELECT o.*, (SELECT SUM(quantity) FROM order_items WHERE order_id = o.order_id) AS item_count
+     FROM orders o
+     WHERE o.user_id = ?
+     ORDER BY o.order_date DESC, o.order_id DESC'
+);
+$stmt->execute([$_SESSION['user_id']]);
+$orders    = $stmt->fetchAll();
+$hasOrders = (bool) $orders;                             // before filtering, to tell "no orders" from "none in this tab"
+
+// ?filter=all|active|completed|cancelled narrows the list to those statuses
+$tabs   = ['all' => 'All', 'active' => 'Active', 'completed' => 'Completed', 'cancelled' => 'Cancelled'];
+$groups = [
+    'active'    => ['Pending', 'Preparing', 'Out for delivery'],
+    'completed' => ['Delivered'],
+    'cancelled' => ['Cancelled'],
+];
+$filter = array_key_exists($_GET['filter'] ?? '', $tabs) ? $_GET['filter'] : 'all';
+if ($filter !== 'all') {
+    $orders = array_values(array_filter($orders, function ($order) use ($groups, $filter) {
+        return in_array($order['status'], $groups[$filter], true);
+    }));
+}
+
+// Link to an order (or just a tab) that keeps the current filter in the URL
+function orders_url(string $filter, ?int $id = null): string
+{
+    $query = array_filter(['filter' => $filter === 'all' ? '' : $filter, 'id' => $id]);
+    return 'orders.php' . ($query ? '?' . http_build_query($query) : '');
+}
+
+// The order shown in the detail panel: ?id=ORDER_ID if it is one of this user's orders, else the newest
+$selected = $orders[0] ?? null;
+$wantedId = filter_var($_GET['id'] ?? '', FILTER_VALIDATE_INT);
+foreach ($orders as $order) {
+    if ($order['order_id'] === $wantedId) {
+        $selected = $order;
+    }
+}
+
+$orderItems = [];
+if ($selected) {
+    $stmt = db()->prepare(
+        'SELECT oi.quantity, oi.unit_price, m.name, m.image
+         FROM order_items oi
+         JOIN menu_items m ON m.item_id = oi.item_id
+         WHERE oi.order_id = ?
+         ORDER BY oi.order_item_id'
+    );
+    $stmt->execute([$selected['order_id']]);
+    $orderItems = $stmt->fetchAll();
+}
+
+// Status name => CSS class for the badge, and the steps shown in the timeline
+$statusClass = ['Pending' => 'pending', 'Preparing' => 'preparing', 'Out for delivery' => 'delivery', 'Delivered' => 'delivered', 'Cancelled' => 'cancelled'];
+$steps       = ['Pending' => 'Order received', 'Preparing' => 'Preparing', 'Out for delivery' => 'Out for delivery', 'Delivered' => 'Delivered'];
+$payments    = ['cash' => 'Cash on delivery', 'card' => 'Card on delivery', 'paynow' => 'PayNow'];
+$summary     = cart_summary();                           // for the cart badge
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -13,48 +92,66 @@
       <a class="brand" href="index.php"><span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 12h12a6 6 0 0 1-12 0Z"/><path d="M8 6v2M14 5v3"/></svg></span>FoodHub</a>
       <div class="search"><span class="search-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg></span><span>Search dishes, e.g. laksa</span></div>
       <nav class="nav"><a href="index.php">Home</a><a href="menu.php">Menu</a><a class="active" href="orders.php">My orders</a><a href="#">Contact</a></nav>
-      <a class="cart" href="cart.php"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6h15l-2 8H8L6 3H3"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg><span>3</span></a>
+      <a class="cart" href="cart.php"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6h15l-2 8H8L6 3H3"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg><span><?= $summary['items'] ?></span></a>
       <?php require __DIR__ . '/includes/auth_nav.php'; ?>
     </header>
     <main class="container">
-      <div class="alert-success">
-        <span class="alert-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 5 5 9-10"/></svg></span>
-        <span><strong>Order #1042 placed</strong><br>A confirmation email is on its way to aisha@example.com.</span>
-        <a href="menu.php">Order more</a>
-      </div>
       <div class="page-head"><h1>My orders</h1>
-        <div class="filter-tabs"><a class="active" href="#">All</a><a href="#">Active</a><a href="#">Completed</a><a href="#">Cancelled</a></div>
+        <div class="filter-tabs">
+          <?php foreach ($tabs as $key => $label): ?>
+          <a<?= $filter === $key ? ' class="active"' : '' ?> href="<?= e(orders_url($key)) ?>"><?= e($label) ?></a>
+          <?php endforeach; ?>
+        </div>
       </div>
+      <?php if (!$orders): ?>
+      <section class="panel orders-table"><p class="fine" style="padding: 28px"><?= $hasOrders ? 'No ' . e(strtolower($tabs[$filter])) . ' orders.' : 'You have not placed any orders yet.' ?> <a class="back-link" href="menu.php">Browse the menu</a></p></section>
+      <?php else: ?>
       <div class="orders-layout">
         <section class="panel orders-table">
           <table>
             <thead><tr><th>Order</th><th>Placed</th><th>Items</th><th>Total</th><th>Status</th></tr></thead>
             <tbody>
-              <tr class="selected"><td><a href="#">#1042</a></td><td>8 Oct, 14:52</td><td>3</td><td><strong>$11.60</strong></td><td><span class="status pending">Pending</span></td></tr>
-              <tr><td><a href="#">#1038</a></td><td>6 Oct, 19:10</td><td>2</td><td><strong>$15.30</strong></td><td><span class="status preparing">Preparing</span></td></tr>
-              <tr><td><a href="#">#1031</a></td><td>3 Oct, 12:25</td><td>4</td><td><strong>$22.40</strong></td><td><span class="status delivery">Out for delivery</span></td></tr>
-              <tr><td><a href="#">#1024</a></td><td>28 Sep, 18:40</td><td>2</td><td><strong>$9.70</strong></td><td><span class="status delivered">Delivered</span></td></tr>
-              <tr><td><a href="#">#1019</a></td><td>24 Sep, 13:05</td><td>1</td><td><strong>$5.50</strong></td><td><span class="status cancelled">Cancelled</span></td></tr>
+              <?php foreach ($orders as $order): ?>
+              <tr data-href="<?= e(orders_url($filter, $order['order_id'])) ?>"<?= $order['order_id'] === $selected['order_id'] ? ' class="selected"' : '' ?>><td><a href="<?= e(orders_url($filter, $order['order_id'])) ?>">#<?= (int) $order['order_id'] ?></a></td><td><?= e(date('j M, H:i', strtotime($order['order_date']))) ?></td><td><?= (int) $order['item_count'] ?></td><td><strong>$<?= number_format((float) $order['total_amount'], 2) ?></strong></td><td><span class="status <?= $statusClass[$order['status']] ?>"><?= e($order['status']) ?></span></td></tr>
+              <?php endforeach; ?>
             </tbody>
           </table>
         </section>
         <aside class="order-card detail-panel">
-          <div class="detail-top"><span>Order details</span><span class="status pending">Pending</span></div>
-          <h2>#1042</h2>
+          <div class="detail-top"><span>Order details</span><span class="status <?= $statusClass[$selected['status']] ?>"><?= e($selected['status']) ?></span></div>
+          <h2>#<?= (int) $selected['order_id'] ?></h2>
+          <?php if ($selected['status'] === 'Cancelled'): ?>
+          <p class="fine">This order was cancelled on <?= e(date('j M, H:i', strtotime($selected['updated_at']))) ?>.</p>
+          <?php else: ?>
           <ol class="timeline">
-            <li class="current"><span class="tl-dot"></span><span><strong>Order received</strong><small>8 Oct, 14:52</small></span></li>
-            <li class=""><span class="tl-dot"></span><span><strong>Preparing</strong></span></li>
-            <li class=""><span class="tl-dot"></span><span><strong>Out for delivery</strong></span></li>
-            <li class=""><span class="tl-dot"></span><span><strong>Delivered</strong></span></li>
+            <?php $reached = true; ?>
+            <?php foreach ($steps as $status => $label): ?>
+            <?php $isCurrent = $status === $selected['status']; ?>
+            <li class="<?= $isCurrent ? 'current' : ($reached ? 'done' : '') ?>"><span class="tl-dot"></span><span><strong><?= e($label) ?></strong><?php if ($isCurrent): ?><small><?= e(date('j M, H:i', strtotime($status === 'Pending' ? $selected['order_date'] : $selected['updated_at']))) ?></small><?php endif; ?></span></li>
+            <?php if ($isCurrent) { $reached = false; } ?>
+            <?php endforeach; ?>
           </ol>
-          <div class="sum-item"><span class="swatch-lg t-green"></span><span><h3>Curry laksa &times; 1</h3></span><strong>$7.20</strong></div>
-          <div class="sum-item"><span class="swatch-lg t-blue"></span><span><h3>Iced lemon tea &times; 2</h3></span><strong>$4.40</strong></div>
-          <div class="order-total"><span>Total</span><strong>$11.60</strong></div>
-          <div class="note-box block"><p><span>Deliver to</span> Blk 123 Tampines St 11, #05-67</p><p><span>Phone</span> 9123 4567 &middot; <span>Payment</span> Cash on delivery</p></div>
-          <button type="button" class="btn-outline-danger">Cancel order</button>
+          <?php endif; ?>
+          <?php foreach ($orderItems as $item): ?>
+          <div class="sum-item"><?php if (!empty($item['image'])): ?><img class="swatch-lg" src="<?= e($item['image']) ?>" alt=""><?php else: ?><span class="swatch-lg t-peach"></span><?php endif; ?><span><h3><?= e($item['name']) ?> &times; <?= (int) $item['quantity'] ?></h3></span><strong>$<?= number_format($item['unit_price'] * $item['quantity'], 2) ?></strong></div>
+          <?php endforeach; ?>
+          <div class="order-total"><span>Total</span><strong>$<?= number_format((float) $selected['total_amount'], 2) ?></strong></div>
+          <div class="note-box block">
+            <p><span>Deliver to</span> <?= e($selected['delivery_address']) ?></p>
+            <p><span>Phone</span> <?= e($selected['contact_phone']) ?> &middot; <span>Payment</span> <?= e($payments[$selected['payment_method']]) ?></p>
+            <?php if ($selected['notes'] !== null && $selected['notes'] !== ''): ?><p><span>Notes</span> <?= e($selected['notes']) ?></p><?php endif; ?>
+          </div>
+          <?php if ($selected['status'] === 'Pending'): ?>
+          <form method="post" action="orders.php" id="cancel-form">
+            <input type="hidden" name="action" value="cancel_order">
+            <input type="hidden" name="order_id" value="<?= (int) $selected['order_id'] ?>">
+            <button type="submit" class="btn-outline-danger">Cancel order</button>
+          </form>
           <p class="fine">Orders can be cancelled until the kitchen starts preparing.</p>
+          <?php endif; ?>
         </aside>
       </div>
+      <?php endif; ?>
     </main>
     <footer class="footer">
       <div class="footer-main">
@@ -65,5 +162,6 @@
       <div class="footer-bottom"><p>&copy; 2026 FoodHub</p></div>
     </footer>
   </div>
+  <script src="js/orders.js"></script>
 </body>
 </html>

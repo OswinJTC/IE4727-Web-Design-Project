@@ -85,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'place
             db()->commit();
 
             unset($_SESSION['cart']);                    // the cart is now an order
-            header('Location: orders.php');              // Post/Redirect/Get
+            header('Location: orders.php?id=' . $orderId);   // Post/Redirect/Get, showing the new order
             exit;
         } catch (PDOException $ex) {
             if (db()->inTransaction()) {
