@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FoodHub | Create Account</title>
+  <title>FoodHub | Log in or Sign up</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -11,28 +11,39 @@
     <header class="topbar simple-header">
       <a class="brand" href="index.html"><span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 12h12a6 6 0 0 1-12 0Z"/><path d="M8 6v2M14 5v3"/></svg></span>FoodHub</a>
       <nav class="nav"><a href="index.html">Home</a><a href="menu.html">Menu</a><a href="#">Contact</a></nav>
-      <span class="top-note">Already a member?</span>
-      <a class="btn light" href="index.html">Log in</a>
     </header>
     <main>
-      <section class="signup-shell">
+      <section class="signup-shell auth-shell">
         <aside class="signup-aside">
-          <h1>Join FoodHub and order in a few taps.</h1>
+          <span class="auth-tag">Existing customer</span>
+          <h1>Log in</h1>
+          <p class="sub">Welcome back. Pick up where you left off.</p>
+          <form class="login-form" id="login">
+            <div class="field"><label for="login-email">Email</label><input id="login-email" name="email" type="email" required></div>
+            <div class="field"><label for="login-password">Password</label><input id="login-password" name="password" type="password" required></div>
+            <label class="remember"><input type="checkbox" name="remember" checked> Remember my email for 30 days</label>
+            <button class="btn" type="submit">Log in</button>
+            <p class="auth-note">Admins log in here too and are taken to the dashboard.</p>
+          </form>
+          <div class="why">
+            <h2>Why have an account?</h2>
           <div class="benefit"><span class="mini-icon logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s6-5.1 6-10a6 6 0 0 0-12 0c0 4.9 6 10 6 10Z"/><circle cx="12" cy="11" r="2"/></svg></span><span><h3>Saved address</h3><p>Checkout fills in your delivery details.</p></span></div>
           <div class="benefit"><span class="mini-icon logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M12 8v5l3 2"/></svg></span><span><h3>Live order status</h3><p>Follow every order from kitchen to door.</p></span></div>
           <div class="benefit"><span class="mini-icon logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16v12H4z"/><path d="m4 7 8 6 8-6"/></svg></span><span><h3>Email updates</h3><p>Confirmation and status changes in your inbox.</p></span></div>
+          </div>
         </aside>
         <div class="signup-main">
+          <span class="auth-tag soft">New to FoodHub</span>
           <h1>Create your account</h1>
           <p>All fields are required unless marked optional.</p>
-          <form class="signup-form">
-            <div class="field"><label for="name">Full name</label><input id="name" type="text" value="Aisha Lim"></div>
-            <div class="field"><label for="phone">Phone</label><input id="phone" type="tel" value="9123 4567"><p class="hint">8-digit Singapore number</p></div>
-            <div class="field wide"><label for="email">Email</label><input class="error" id="email" type="email" value="aisha@example.com"><p class="error-text">! This email is already registered. <a href="index.html">Log in instead</a></p></div>
-            <div class="field wide"><label for="address">Delivery address <span class="hint">(optional)</span></label><textarea id="address" placeholder="Block, street, unit, postal code"></textarea></div>
-            <div class="field"><label for="password">Password</label><input id="password" type="password" value="password"><div class="strength"><span></span><span></span><span></span><span></span></div><p class="hint">Fair. Use 8+ characters with a letter and a digit.</p></div>
-            <div class="field"><label for="confirm">Confirm password</label><input class="error" id="confirm" type="password" value="passwor"><p class="error-text">! Passwords do not match</p></div>
-            <div class="wide"><button class="btn" type="button">Create account</button><p class="auth-footer">Already have an account? <a href="index.html">Log in</a></p></div>
+          <form class="signup-form" id="register">
+            <div class="field"><label for="name">Full name</label><input id="name" name="full_name" type="text" required></div>
+            <div class="field"><label for="phone">Phone</label><input id="phone" name="phone" type="tel" inputmode="numeric" pattern="[689][0-9]{7}" maxlength="8" required><p class="hint">8-digit Singapore number</p></div>
+            <div class="field wide"><label for="email">Email</label><input id="email" name="email" type="email" required></div>
+            <div class="field wide"><label for="address">Delivery address <span class="hint">(optional)</span></label><textarea id="address" name="address" placeholder="Block, street, unit, postal code"></textarea></div>
+            <div class="field"><label for="password">Password</label><input id="password" name="password" type="password" minlength="8" required><div class="strength"><span></span><span></span><span></span><span></span></div><p class="hint">Use 8+ characters with a letter and a digit.</p></div>
+            <div class="field"><label for="confirm">Confirm password</label><input id="confirm" name="confirm" type="password" required></div>
+            <div class="wide"><button class="btn" type="submit">Create account</button><p class="auth-footer">By creating an account you can order, track deliveries and view past orders.</p></div>
           </form>
         </div>
       </section>
