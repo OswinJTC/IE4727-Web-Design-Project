@@ -497,3 +497,7 @@ input.error, input.bad { border-color: #e11d20; background: #fff9f9; }
   .alert-success { flex-wrap: wrap; }
 }
 .auth-shell .signup-aside:after { display: none; }
+.success-card { max-width: 520px; margin: 80px auto 120px; padding: 48px 40px; text-align: center; border: 1px solid var(--line); border-radius: 22px; background: #fff; }
+.success-card h1 { margin: 0 0 10px; font-size: 32px; }
+.success-card p { margin: 0 0 28px; color: var(--muted); }
+.success-card .btn { display: inline-flex; width: auto; padding: 0 28px; }

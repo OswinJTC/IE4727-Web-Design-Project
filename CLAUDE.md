@@ -66,7 +66,7 @@ Delete rules: `orders.user_id` RESTRICT, `order_items.order_id` CASCADE, `order_
 - Validate in layers: HTML5 attributes, then JS, then PHP. The PHP check is the one that counts.
 - All SQL goes through PDO prepared statements. No string-built queries.
 - Escape all output with `htmlspecialchars()`. Hash passwords with `password_hash()` / `password_verify()`.
-- CSRF token in every state-changing form. Use Post/Redirect/Get after every POST and show messages via `$_SESSION['flash']`.
+- No CSRF tokens (kept simple on purpose). Use Post/Redirect/Get after every POST and show messages via `$_SESSION['flash']`.
 - Regenerate the session ID on login. Destroy session and cookies on logout.
 - Keep PHP logic at the top of the file and HTML below it, so the markup stays readable. Use the alternative syntax (`foreach: ... endforeach;`, `if: ... endif;`) inside HTML.
 - Reporting queries (dashboard, sales by category, top dishes) use `GROUP BY` in SQL, not PHP loops.

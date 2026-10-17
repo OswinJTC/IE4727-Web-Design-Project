@@ -50,3 +50,6 @@ cache/
 # OS thumbnails
 Thumbs.db
 ehthumbs.db
+
+# Local PHP config with credentials (copy from config.sample.php)
+includes/config.php

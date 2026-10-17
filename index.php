@@ -9,7 +9,7 @@
 <body>
   <div class="page">
     <header class="topbar">
-      <a class="brand" href="index.html">
+      <a class="brand" href="index.php">
         <span class="logo">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 12h12a6 6 0 0 1-12 0Z"/><path d="M8 6v2M14 5v3"/></svg>
         </span>
@@ -20,7 +20,7 @@
         <span>Search dishes, e.g. laksa</span>
       </div>
       <nav class="nav">
-        <a class="active" href="index.html">Home</a>
+        <a class="active" href="index.php">Home</a>
         <a href="menu.html">Menu</a>
         <a href="#">Contact</a>
       </nav>
