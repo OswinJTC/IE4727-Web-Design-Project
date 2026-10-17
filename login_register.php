@@ -18,10 +18,9 @@
           <span class="auth-tag">Existing customer</span>
           <h1>Log in</h1>
           <p class="sub">Welcome back. Pick up where you left off.</p>
-          <form class="login-form" id="login">
-            <div class="field"><label for="login-email">Email</label><input id="login-email" name="email" type="email" required></div>
-            <div class="field"><label for="login-password">Password</label><input id="login-password" name="password" type="password" required></div>
-            <label class="remember"><input type="checkbox" name="remember" checked> Remember my email for 30 days</label>
+          <form class="login-form" id="login" novalidate>
+            <div class="field"><label for="login-email">Email</label><input id="login-email" name="email" type="email" required><p class="error-text" id="err-login-email" role="alert"></p></div>
+            <div class="field"><label for="login-password">Password</label><input id="login-password" name="password" type="password" required><p class="error-text" id="err-login-password" role="alert"></p></div>
             <button class="btn" type="submit">Log in</button>
             <p class="auth-note">Admins log in here too and are taken to the dashboard.</p>
           </form>
@@ -36,13 +35,13 @@
           <span class="auth-tag soft">New to FoodHub</span>
           <h1>Create your account</h1>
           <p>All fields are required unless marked optional.</p>
-          <form class="signup-form" id="register">
-            <div class="field"><label for="name">Full name</label><input id="name" name="full_name" type="text" required></div>
-            <div class="field"><label for="phone">Phone</label><input id="phone" name="phone" type="tel" inputmode="numeric" pattern="[689][0-9]{7}" maxlength="8" required><p class="hint">8-digit Singapore number</p></div>
-            <div class="field wide"><label for="email">Email</label><input id="email" name="email" type="email" required></div>
+          <form class="signup-form" id="register" novalidate>
+            <div class="field"><label for="name">Full name</label><input id="name" name="full_name" type="text" required><p class="error-text" id="err-name" role="alert"></p></div>
+            <div class="field"><label for="phone">Phone</label><input id="phone" name="phone" type="tel" inputmode="numeric" pattern="[689][0-9]{7}" maxlength="8" required><p class="error-text" id="err-phone" role="alert"></p><p class="hint">8-digit Singapore number</p></div>
+            <div class="field wide"><label for="email">Email</label><input id="email" name="email" type="email" required><p class="error-text" id="err-email" role="alert"></p></div>
             <div class="field wide"><label for="address">Delivery address <span class="hint">(optional)</span></label><textarea id="address" name="address" placeholder="Block, street, unit, postal code"></textarea></div>
-            <div class="field"><label for="password">Password</label><input id="password" name="password" type="password" minlength="8" required><div class="strength"><span></span><span></span><span></span><span></span></div><p class="hint">Use 8+ characters with a letter and a digit.</p></div>
-            <div class="field"><label for="confirm">Confirm password</label><input id="confirm" name="confirm" type="password" required></div>
+            <div class="field"><label for="password">Password</label><input id="password" name="password" type="password" minlength="8" required><div class="strength"><span></span><span></span><span></span><span></span></div><p class="error-text" id="err-password" role="alert"></p><p class="hint">Use 8+ characters with a letter and a digit.</p></div>
+            <div class="field"><label for="confirm">Confirm password</label><input id="confirm" name="confirm" type="password" required><p class="error-text" id="err-confirm" role="alert"></p></div>
             <div class="wide"><button class="btn" type="submit">Create account</button><p class="auth-footer">By creating an account you can order, track deliveries and view past orders.</p></div>
           </form>
         </div>
@@ -57,5 +56,6 @@
       <div class="footer-bottom"><p>&copy; 2026 FoodHub</p></div>
     </footer>
   </div>
+  <script src="js/login_register.js"></script>
 </body>
 </html>
