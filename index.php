@@ -103,7 +103,6 @@ $items = db()->query(
             <h3><a href="item.php?id=<?= (int) $item['item_id'] ?>"><?= e($item['name']) ?></a></h3>
             <p><?= e($item['description']) ?></p>
             <div class="price">$<?= number_format((float) $item['price'], 2) ?></div>
-            <a class="add" href="index.php?product_id=<?= (int) $item['item_id'] ?>" aria-label="Add <?= e($item['name']) ?> to cart">+</a>
           </article>
           <?php }; ?>
         </div>

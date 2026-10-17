@@ -520,3 +520,13 @@ a.add { display: grid; place-items: center; background: var(--brand); color: #ff
 .qty-stepper .stepper-qty { min-width: 20px; text-align: center; font-size: 16px; font-weight: 900; }
 .swatch-lg { object-fit: cover; }
 .qty-sm a { display: grid; place-items: center; height: 100%; color: var(--ink); font-size: 20px; }
+.product-visual { position: relative; overflow: hidden; }
+.product-visual img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.thumb-card .image { position: relative; overflow: hidden; }
+.thumb-card .image img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.buy-row .qty button { height: 100%; background: transparent; color: var(--ink); font-size: 20px; }
+.buy-row .qty button:disabled { color: #bbb4ad; cursor: default; }
+.added-note { margin: 14px 0 0; padding: 12px 14px; border-radius: 10px; background: #e6f4ea; color: #14532d; font: 700 14px Arial, sans-serif; }
+.added-note a { text-decoration: underline; }
+.added-note:empty { display: none; }
+textarea.bad { border-color: #e11d20; background: #fff9f9; }

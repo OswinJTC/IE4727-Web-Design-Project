@@ -1,10 +1,36 @@
-<?php require __DIR__ . '/includes/functions.php'; ?>
+<?php
+require __DIR__ . '/includes/functions.php';
+require __DIR__ . '/includes/cart.php';
+
+// ?id=ITEM_ID: show one available dish, or a "not found" message
+$id   = filter_var($_GET['id'] ?? '', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+$item = false;
+if ($id !== false) {
+    // "Add to cart" sends ?product_id=ID&qty=N here; add it, then reload this page
+    cart_handle_request('item.php?id=' . $id);
+
+    $stmt = db()->prepare('SELECT * FROM menu_items WHERE item_id = ? AND is_available = 1');
+    $stmt->execute([$id]);
+    $item = $stmt->fetch();
+}
+if (!$item) {
+    http_response_code(404);
+}
+
+// "More in <category>": up to 4 other available dishes from the same category, in random order
+$more = [];
+if ($item) {
+    $stmt = db()->prepare('SELECT item_id, name, price, image FROM menu_items WHERE category = ? AND item_id <> ? AND is_available = 1 ORDER BY RAND() LIMIT 4');
+    $stmt->execute([$item['category'], $item['item_id']]);
+    $more = $stmt->fetchAll();
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FoodHub | Curry Laksa</title>
+  <title>FoodHub | <?= e($item['name'] ?? 'Dish not found') ?></title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -17,21 +43,29 @@
       <?php require __DIR__ . '/includes/auth_nav.php'; ?>
     </header>
     <main class="container">
-      <div class="breadcrumb"><a href="index.php">Home</a> / <a href="menu.php">Menu</a> / <a href="menu.php">Mains</a> / <strong>Curry laksa</strong></div>
+      <?php if (!$item): ?>
+      <div class="breadcrumb"><a href="index.php">Home</a> / <a href="menu.php">Menu</a> / <strong>Dish not found</strong></div>
+      <section class="product-info">
+        <h1>Dish not found</h1>
+        <p class="desc">This dish does not exist or is no longer available.</p>
+        <a class="back-link" href="menu.php">&lt; Back to menu</a>
+      </section>
+      <?php else: ?>
+      <div class="breadcrumb"><a href="index.php">Home</a> / <a href="menu.php">Menu</a> / <a href="menu.php?category=<?= urlencode($item['category']) ?>"><?= e($item['category']) ?></a> / <strong><?= e($item['name']) ?></strong></div>
       <section class="product">
         <div>
-          <div class="product-visual t-green"><span class="food-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 12h14a7 7 0 0 1-14 0Z"/><path d="M8 7v2M14 6v3"/></svg></span></div>
-          <div class="thumbs"><span class="thumb active t-green"></span><span class="thumb t-green"></span><span class="thumb t-cream"></span><span class="thumb t-peach"></span></div>
+          <div class="product-visual"><img src="<?= e($item['image']) ?>" alt="<?= e($item['name']) ?>"></div>
         </div>
         <div class="product-info">
-          <span class="label">Mains</span>
-          <h1>Curry laksa</h1>
-          <div class="big-price">$7.20</div>
-          <p class="desc">Thick rice noodles in a rich, spicy coconut curry broth, topped with prawns, fish cake, tofu puffs, bean sprouts and a boiled egg.</p>
+          <span class="label"><?= e($item['category']) ?></span>
+          <h1><?= e($item['name']) ?></h1>
+          <div class="big-price">$<?= number_format((float) $item['price'], 2) ?></div>
+          <p class="desc"><?= e($item['description']) ?></p>
           <div class="buy-row">
-            <div class="qty"><span>-</span><span>1</span><span>+</span></div>
-            <a class="btn" href="#"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6h15l-2 8H8L6 3H3"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg> Add to cart - $7.20</a>
+            <div class="qty"><button type="button" id="qty-dec" aria-label="Decrease quantity">&minus;</button><span id="qty-value">1</span><button type="button" id="qty-inc" aria-label="Increase quantity">+</button></div>
+            <a class="btn" id="add-to-cart" href="item.php?id=<?= (int) $item['item_id'] ?>&amp;product_id=<?= (int) $item['item_id'] ?>&amp;qty=1" data-base-href="item.php?id=<?= (int) $item['item_id'] ?>&amp;product_id=<?= (int) $item['item_id'] ?>" data-price="<?= e(number_format((float) $item['price'], 2, '.', '')) ?>"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6h15l-2 8H8L6 3H3"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg> Add to cart - <span id="add-total">$<?= number_format((float) $item['price'], 2) ?></span></a>
           </div>
+          <p class="added-note" id="added-note" role="status"></p>
           <a class="back-link" href="menu.php">&lt; Back to menu</a>
           <div class="detail-grid">
             <div class="detail-card"><span class="mini-icon t-peach"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7h14v10H5z"/><path d="M8 12h8"/></svg></span><span><h3>Pay your way</h3><p>Cash, card on delivery or PayNow</p></span></div>
@@ -39,14 +73,18 @@
           </div>
         </div>
       </section>
+      <?php endif; ?>
 
-      <div class="more-row"><h2>More in Mains</h2><a class="see-all" href="menu.php">View all -></a></div>
+      <?php if ($more): ?>
+      <div class="more-row"><h2>More in <?= e($item['category']) ?></h2><a class="see-all" href="menu.php?category=<?= urlencode($item['category']) ?>">View all -></a></div>
       <section class="thumb-grid">
-        <article class="thumb-card"><div class="image t-peach"></div><h3>Hainanese chicken rice</h3><div class="price">$5.50</div></article>
-        <article class="thumb-card"><div class="image t-cream"></div><h3>Beef rendang bowl</h3><div class="price">$9.80</div></article>
-        <article class="thumb-card"><div class="image t-green"></div><h3>Nasi lemak</h3><div class="price">$6.50</div></article>
-        <article class="thumb-card"><div class="image t-blue"></div><h3>Teriyaki salmon bowl</h3><div class="price">$11.90</div></article>
+        <?php foreach ($more as $other): ?>
+        <a href="item.php?id=<?= (int) $other['item_id'] ?>">
+          <article class="thumb-card"><div class="image"><img src="<?= e($other['image']) ?>" alt="<?= e($other['name']) ?>" loading="lazy"></div><h3><?= e($other['name']) ?></h3><div class="price">$<?= number_format((float) $other['price'], 2) ?></div></article>
+        </a>
+        <?php endforeach; ?>
       </section>
+      <?php endif; ?>
     </main>
     <footer class="footer">
       <div class="footer-main">
@@ -57,5 +95,6 @@
       <div class="footer-bottom"><p>&copy; 2026 FoodHub</p></div>
     </footer>
   </div>
+  <script src="js/item.js"></script>
 </body>
 </html>
