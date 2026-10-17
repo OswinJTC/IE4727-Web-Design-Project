@@ -1,6 +1,8 @@
 <?php
 require __DIR__ . '/includes/functions.php';
-require __DIR__ . '/includes/db.php';
+require __DIR__ . '/includes/cart.php';
+
+$summary = cart_summary();                   // for the cart badge in the navbar
 
 // Top 4 most ordered dishes (cancelled orders do not count). Dishes never ordered
 // sort last, so the section still fills up on a fresh database.
@@ -37,14 +39,13 @@ $items = db()->query(
         </span>
         FoodHub
       </a>
-      <div class="search">
-        <span class="search-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg></span>
-        <span>Search dishes, e.g. laksa</span>
-      </div>
+      <?php require __DIR__ . '/includes/search_bar.php'; ?>
       <nav class="nav">
         <a class="active" href="index.php">Home</a>
         <a href="menu.php">Menu</a>
+        <a href="orders.php">My orders</a>
       </nav>
+      <a class="cart" href="cart.php"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6h15l-2 8H8L6 3H3"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg><span><?= $summary['items'] ?></span></a>
       <?php require __DIR__ . '/includes/auth_nav.php'; ?>
     </header>
 
