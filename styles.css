@@ -513,3 +513,10 @@ input.error, input.bad { border-color: #e11d20; background: #fff9f9; }
 .dish-card.small .image { height: 150px; }
 .dish-card p.category { min-height: 0; margin: 0 0 2px; font-size: 13px; }
 .dish-card .tag { z-index: 1; }
+a.add { display: grid; place-items: center; background: var(--brand); color: #fff; font-weight: 900; }
+.qty-stepper { position: absolute; right: 18px; bottom: 20px; display: flex; align-items: center; gap: 8px; }
+.qty-stepper .add, .qty-stepper .dec { position: static; width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; font-size: 24px; font-weight: 900; line-height: 1; }
+.qty-stepper .dec { background: #fff; color: var(--ink); border: 1px solid var(--line); }
+.qty-stepper .stepper-qty { min-width: 20px; text-align: center; font-size: 16px; font-weight: 900; }
+.swatch-lg { object-fit: cover; }
+.qty-sm a { display: grid; place-items: center; height: 100%; color: var(--ink); font-size: 20px; }

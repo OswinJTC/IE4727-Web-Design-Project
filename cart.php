@@ -1,4 +1,11 @@
-<?php require __DIR__ . '/includes/functions.php'; ?>
+<?php
+require __DIR__ . '/includes/cart.php';
+
+// ?product_id=ID&action=add|decrease|remove changes the session cart, then comes back here
+cart_handle_request('cart.php');
+
+$summary = cart_summary();
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -13,7 +20,7 @@
       <a class="brand" href="index.php"><span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 12h12a6 6 0 0 1-12 0Z"/><path d="M8 6v2M14 5v3"/></svg></span>FoodHub</a>
       <div class="search"><span class="search-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg></span><span>Search dishes, e.g. laksa</span></div>
       <nav class="nav"><a href="index.php">Home</a><a href="menu.php">Menu</a><a href="orders.php">My orders</a><a href="#">Contact</a></nav>
-      <a class="cart" href="cart.php"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6h15l-2 8H8L6 3H3"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg><span>3</span></a>
+      <a class="cart" href="cart.php"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6h15l-2 8H8L6 3H3"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg><span><?= $summary['items'] ?></span></a>
       <?php require __DIR__ . '/includes/auth_nav.php'; ?>
     </header>
     <main class="container">
@@ -21,27 +28,26 @@
       <div class="cart-layout">
         <section class="cart-table panel">
           <div class="cart-row cart-head"><span>Dish</span><span>Price</span><span>Quantity</span><span>Subtotal</span><span></span></div>
+          <?php foreach ($summary['lines'] as $line): ?>
+          <?php $pid = (int) $line['item_id']; ?>
           <div class="cart-row">
-            <div class="cart-dish"><span class="swatch-lg t-green"></span><span><h3>Curry laksa</h3><p>Mains</p></span></div>
-            <div class="cart-price">$7.20</div>
-            <div class="qty qty-sm"><button type="button" aria-label="Decrease quantity">&minus;</button><span>1</span><button type="button" aria-label="Increase quantity">+</button></div>
-            <div class="cart-sub">$7.20</div>
-            <button type="button" class="icon-btn" aria-label="Remove Curry laksa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
+            <div class="cart-dish"><?php if ($line['image'] !== ''): ?><img class="swatch-lg" src="<?= e($line['image']) ?>" alt=""><?php else: ?><span class="swatch-lg t-peach"></span><?php endif; ?><span><h3><?= e($line['name']) ?></h3><p><?= e($line['category']) ?></p></span></div>
+            <div class="cart-price">$<?= number_format($line['price'], 2) ?></div>
+            <div class="qty qty-sm"><a href="cart.php?product_id=<?= $pid ?>&amp;action=decrease" aria-label="Decrease quantity">&minus;</a><span><?= (int) $line['count'] ?></span><a href="cart.php?product_id=<?= $pid ?>&amp;action=add" aria-label="Increase quantity">+</a></div>
+            <div class="cart-sub">$<?= number_format($line['subtotal'], 2) ?></div>
+            <a class="icon-btn" href="cart.php?product_id=<?= $pid ?>&amp;action=remove" aria-label="Remove <?= e($line['name']) ?>"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></a>
           </div>
-          <div class="cart-row">
-            <div class="cart-dish"><span class="swatch-lg t-blue"></span><span><h3>Iced lemon tea</h3><p>Drinks</p></span></div>
-            <div class="cart-price">$2.20</div>
-            <div class="qty qty-sm"><button type="button" aria-label="Decrease quantity">&minus;</button><span>2</span><button type="button" aria-label="Increase quantity">+</button></div>
-            <div class="cart-sub">$4.40</div>
-            <button type="button" class="icon-btn" aria-label="Remove Iced lemon tea"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
-          </div>
+          <?php endforeach; ?>
+          <?php if (!$summary['lines']): ?>
+          <div class="cart-row"><span>Your cart is empty. <a class="back-link" href="menu.php">Browse the menu</a></span></div>
+          <?php endif; ?>
           <div class="cart-foot"><a class="back-link" href="menu.php">&larr; Continue browsing</a><span>Quantities between 1 and 20 per dish</span></div>
         </section>
         <aside class="order-card summary">
           <h2>Order summary</h2>
-          <div class="order-line muted-line"><span>Items (3)</span><span>$11.60</span></div>
-          <div class="order-total"><span>Total</span><strong>$11.60</strong></div>
-          <a class="btn" href="checkout.php">Proceed to checkout &rarr;</a>
+          <div class="order-line muted-line"><span>Items (<?= $summary['items'] ?>)</span><span>$<?= number_format($summary['total'], 2) ?></span></div>
+          <div class="order-total"><span>Total</span><strong>$<?= number_format($summary['total'], 2) ?></strong></div>
+          <?php if ($summary['lines']): ?><a class="btn" href="checkout.php">Proceed to checkout &rarr;</a><?php endif; ?>
           <p class="note-box"><span class="note-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span>Prices are confirmed again at checkout.</p>
         </aside>
       </div>

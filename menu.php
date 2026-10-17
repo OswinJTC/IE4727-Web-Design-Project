@@ -1,9 +1,35 @@
 <?php
 require __DIR__ . '/includes/functions.php';
+require __DIR__ . '/includes/cart.php';
 
 // ?category=Mains|Sides|Drinks|Desserts marks that tab active; anything else means "All"
-$tabs     = ['Mains' => 4, 'Sides' => 4, 'Drinks' => 4, 'Desserts' => 4];
+$tabs     = ['Mains' => 0, 'Sides' => 0, 'Drinks' => 0, 'Desserts' => 0];
 $category = array_key_exists($_GET['category'] ?? '', $tabs) ? $_GET['category'] : '';
+
+// Available dishes, filtered by the selected category (no category = all dishes)
+$sql    = 'SELECT * FROM menu_items WHERE is_available = 1';
+$params = [];
+if ($category !== '') {
+    $sql     .= ' AND category = ?';
+    $params[] = $category;
+}
+$stmt = db()->prepare($sql . ' ORDER BY name');
+$stmt->execute($params);
+$items = $stmt->fetchAll();
+
+// Tab counts come from their own query, not from $items: $items is already filtered
+// by the selected category, so counting it would zero out every other tab.
+$counts = db()->query('SELECT category, COUNT(*) AS n FROM menu_items WHERE is_available = 1 GROUP BY category');
+foreach ($counts as $row) {
+    $tabs[$row['category']] = (int) $row['n'];
+}
+
+// ?product_id=ID adds a dish to the session cart, &action=decrease removes one
+cart_handle_request('menu.php' . ($category !== '' ? '?category=' . urlencode($category) : ''));
+
+// "Your order" panel and the quantity next to each + button
+$cart    = $_SESSION['cart'] ?? [];
+$summary = cart_summary();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -19,7 +45,7 @@ $category = array_key_exists($_GET['category'] ?? '', $tabs) ? $_GET['category']
       <a class="brand" href="index.php"><span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 12h12a6 6 0 0 1-12 0Z"/><path d="M8 6v2M14 5v3"/></svg></span>FoodHub</a>
       <div class="search"><span class="search-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg></span><span>Search dishes, e.g. laksa</span></div>
       <nav class="nav"><a href="index.php">Home</a><a class="active" href="menu.php">Menu</a><a href="orders.php">My orders</a><a href="#">Contact</a></nav>
-      <a class="cart" href="cart.php"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6h15l-2 8H8L6 3H3"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg><span>3</span></a>
+      <a class="cart" href="cart.php"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6h15l-2 8H8L6 3H3"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg><span><?= $summary['items'] ?></span></a>
       <?php require __DIR__ . '/includes/auth_nav.php'; ?>
     </header>
 
@@ -28,54 +54,39 @@ $category = array_key_exists($_GET['category'] ?? '', $tabs) ? $_GET['category']
       <div class="menu-header">
         <div class="menu-title">
           <h1>Our menu</h1>
-          <p>16 dishes, cooked fresh when you order</p>
+          <p><?= array_sum($tabs) ?> dishes, cooked fresh when you order</p>
         </div>
       </div>
       <nav class="tabs">
-        <a<?= $category === '' ? ' class="active"' : '' ?> href="menu.php">All&nbsp; 16</a>
+        <a<?= $category === '' ? ' class="active"' : '' ?> href="menu.php">All&nbsp; <?= array_sum($tabs) ?></a>
         <?php foreach ($tabs as $name => $count): ?>
         <a<?= $category === $name ? ' class="active"' : '' ?> href="menu.php?category=<?= urlencode($name) ?>"><?= e($name) ?>&nbsp; <?= $count ?></a>
         <?php endforeach; ?>
       </nav>
       <div class="menu-layout">
         <section class="dish-grid">
+          <?php foreach ($items as $item) { ?>
           <article class="dish-card">
-            <span class="tag">Mains</span>
-            <a href="item.php"><div class="image t-peach"><span class="food-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12h14a7 7 0 0 1-14 0Z"/><path d="M8 7v2M14 6v3"/></svg></span></div></a>
-            <h3>Hainanese chicken rice</h3><p>Poached chicken, fragrant rice</p><div class="price">$5.50</div><button class="add" type="button">+</button>
+            <span class="tag"><?= e($item['category']) ?></span>
+            <a href="item.php?id=<?= (int) $item['item_id'] ?>"><div class="image"><img src="<?= e($item['image']) ?>" alt="<?= e($item['name']) ?>" loading="lazy"></div></a>
+            <h3><?= e($item['name']) ?></h3><p><?= e($item['description']) ?></p><div class="price">$<?= number_format((float) $item['price'], 2) ?></div><div class="qty-stepper">
+              <?php $qty = $cart[$item['item_id']]['count'] ?? 0; $link = array_filter(['category' => $category, 'product_id' => (int) $item['item_id']]); ?>
+              <?php if ($qty > 0): ?>
+              <a class="dec" href="menu.php?<?= e(http_build_query($link + ['action' => 'decrease'])) ?>" aria-label="Remove one <?= e($item['name']) ?>">&minus;</a><span class="stepper-qty"><?= (int) $qty ?></span>
+              <?php endif; ?>
+              <a class="add" href="menu.php?<?= e(http_build_query($link)) ?>" aria-label="Add <?= e($item['name']) ?> to cart">+</a>
+            </div>
           </article>
-          <article class="dish-card">
-            <span class="tag">Mains</span>
-            <a href="item.php"><div class="image t-cream"><span class="food-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12h14a7 7 0 0 1-14 0Z"/><path d="M8 7v2M14 6v3"/></svg></span></div></a>
-            <h3>Beef rendang bowl</h3><p>Slow-cooked beef, coconut rice</p><div class="price">$9.80</div><button class="add" type="button">+</button>
-          </article>
-          <article class="dish-card">
-            <span class="tag">Mains</span>
-            <a href="item.php"><div class="image t-green"><span class="food-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12h14a7 7 0 0 1-14 0Z"/><path d="M8 7v2M14 6v3"/></svg></span></div></a>
-            <h3>Curry laksa</h3><p>Coconut broth, prawns, tofu puffs</p><div class="price">$7.20</div><button class="add" type="button">+</button>
-          </article>
-          <article class="dish-card">
-            <span class="tag">Sides</span>
-            <div class="image t-peach"><span class="food-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 11h10l-1 8H8l-1-8Z"/><path d="M10 11V6M14 11V5"/></svg></span></div>
-            <h3>Crispy fries</h3><p>Sea salt, house dip</p><div class="price">$3.50</div><button class="add" type="button">+</button>
-          </article>
-          <article class="dish-card">
-            <span class="tag">Sides</span>
-            <div class="image t-cream"><span class="food-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 11h10l-1 8H8l-1-8Z"/><path d="M10 11V6M14 11V5"/></svg></span></div>
-            <h3>Vegetable spring rolls</h3><p>Four pieces, sweet chilli</p><div class="price">$4.20</div><button class="add" type="button">+</button>
-          </article>
-          <article class="dish-card">
-            <span class="tag">Drinks</span>
-            <div class="image t-blue"><span class="food-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m8 8 1 12h6l1-12H8Z"/><path d="M10 8h8M14 8l2-4"/></svg></span></div>
-            <h3>Iced lemon tea</h3><p>Brewed fresh daily</p><div class="price">$2.20</div><button class="add" type="button">+</button>
-          </article>
+          <?php }; ?>
         </section>
         <aside class="order-card">
-          <div class="order-head"><h2>Your order</h2><span>3 items</span></div>
-          <div class="order-line"><span>1 x Curry laksa</span><span>$7.20</span></div>
-          <div class="order-line"><span>2 x Iced lemon tea</span><span>$4.40</span></div>
-          <div class="order-total"><span>Total</span><strong>$11.60</strong></div>
-          <a class="btn" href="#">View cart</a>
+          <div class="order-head"><h2>Your order</h2><span><?= $summary['items'] ?> item<?= $summary['items'] === 1 ? '' : 's' ?></span></div>
+          <?php foreach ($summary['lines'] as $line): ?>
+          <div class="order-line"><span><?= (int) $line['count'] ?> x <?= e($line['name']) ?></span><span>$<?= number_format($line['subtotal'], 2) ?></span></div>
+          <?php endforeach; ?>
+          <?php if (!$summary['lines']): ?><p>Your cart is empty. Tap + on a dish to add it.</p><?php endif; ?>
+          <div class="order-total"><span>Total</span><strong>$<?= number_format($summary['total'], 2) ?></strong></div>
+          <a class="btn" href="cart.php">View cart</a>
           <p>Cart is kept in your session until you check out.</p>
         </aside>
       </div>
