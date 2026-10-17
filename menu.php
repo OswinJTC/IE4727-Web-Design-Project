@@ -1,4 +1,10 @@
-<?php require __DIR__ . '/includes/functions.php'; ?>
+<?php
+require __DIR__ . '/includes/functions.php';
+
+// ?category=Mains|Sides|Drinks|Desserts marks that tab active; anything else means "All"
+$tabs     = ['Mains' => 4, 'Sides' => 4, 'Drinks' => 4, 'Desserts' => 4];
+$category = array_key_exists($_GET['category'] ?? '', $tabs) ? $_GET['category'] : '';
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -24,11 +30,13 @@
           <h1>Our menu</h1>
           <p>16 dishes, cooked fresh when you order</p>
         </div>
-        <label class="sorter">Sort by
-          <select><option>Most popular</option></select>
-        </label>
       </div>
-      <nav class="tabs"><a class="active" href="#">All&nbsp; 16</a><a href="#">Mains&nbsp; 4</a><a href="#">Sides&nbsp; 4</a><a href="#">Drinks&nbsp; 4</a><a href="#">Desserts&nbsp; 4</a></nav>
+      <nav class="tabs">
+        <a<?= $category === '' ? ' class="active"' : '' ?> href="menu.php">All&nbsp; 16</a>
+        <?php foreach ($tabs as $name => $count): ?>
+        <a<?= $category === $name ? ' class="active"' : '' ?> href="menu.php?category=<?= urlencode($name) ?>"><?= e($name) ?>&nbsp; <?= $count ?></a>
+        <?php endforeach; ?>
+      </nav>
       <div class="menu-layout">
         <section class="dish-grid">
           <article class="dish-card">

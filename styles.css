@@ -506,3 +506,10 @@ input.error, input.bad { border-color: #e11d20; background: #fff9f9; }
 .topbar .nav a, .topbar .btn, .topbar .user-name { white-space: nowrap; }
 .topbar .user-name { margin-left: 0; }
 .topbar .search { min-width: 0; overflow: hidden; white-space: nowrap; }
+.dish-card .image { position: relative; overflow: hidden; }
+.dish-card .image img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.dish-card h3 a { color: inherit; }
+.dish-card .image { margin-bottom: 12px; }
+.dish-card.small .image { height: 150px; }
+.dish-card p.category { min-height: 0; margin: 0 0 2px; font-size: 13px; }
+.dish-card .tag { z-index: 1; }
