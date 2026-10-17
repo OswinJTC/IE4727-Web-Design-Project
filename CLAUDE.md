@@ -44,8 +44,7 @@ sql/             schema.sql  seed.sql
 
 ## Roles and access
 
-- Guest: browse home, menu, dish details, contact, register, login.
-- Member (`role = 'customer'`): everything above plus cart, checkout, own orders.
+- Member (`role = 'customer'`): browse home, menu, dish details, contact, register, login, cart, checkout, own orders.
 - Admin (`role = 'admin'`): everything under `admin/`.
 - Every protected page starts with `require 'includes/auth_check.php'` (or the admin variant). Check the role in PHP; never rely on hidden links.
 
