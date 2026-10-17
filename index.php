@@ -44,7 +44,6 @@ $items = db()->query(
       <nav class="nav">
         <a class="active" href="index.php">Home</a>
         <a href="menu.php">Menu</a>
-        <a href="#">Contact</a>
       </nav>
       <?php require __DIR__ . '/includes/auth_nav.php'; ?>
     </header>
