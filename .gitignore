@@ -36,7 +36,6 @@ error_log
 config.local.php
 
 # Database dumps and local database files
-*.sql
 *.sqlite
 *.sqlite3
 *.db
@@ -51,5 +50,3 @@ cache/
 Thumbs.db
 ehthumbs.db
 
-# Local PHP config with credentials (copy from config.sample.php)
-includes/config.php
