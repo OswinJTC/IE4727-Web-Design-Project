@@ -1,28 +1,27 @@
 <?php
-// Shared PDO connection. Use it from any page:
+// Shared mysqli connection. Use it from any page:
 //   require __DIR__ . '/includes/db.php';
 //   $stmt = db()->prepare('SELECT * FROM users WHERE email = ?');
-//   $stmt->execute([$email]);
+//   $stmt->execute([$email]);                       // values are bound as strings
+//   $user = $stmt->get_result()->fetch_assoc();     // one row, or null
 
-function db(): PDO
+function db(): mysqli
 {
-    static $pdo = null;               // one connection per request
-    if ($pdo !== null) {
-        return $pdo;
+    static $db = null;                // one connection per request
+    if ($db !== null) {
+        return $db;
     }
 
     $config = require __DIR__ . '/config.php';
     $c = $config['db'];
 
-    $dsn = "mysql:host={$c['host']};dbname={$c['name']};charset={$c['charset']}";
+    mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);   // failures throw mysqli_sql_exception
     try {
-        $pdo = new PDO($dsn, $c['user'], $c['pass'], [
-            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES   => false
-        ]);
-    } catch (PDOException $e) {
+        $db = new mysqli($c['host'], $c['user'], $c['pass'], $c['name']);
+        $db->set_charset($c['charset']);
+        $db->options(MYSQLI_OPT_INT_AND_FLOAT_NATIVE, 1);        // ints stay ints for plain query() too
+    } catch (mysqli_sql_exception $e) {
         exit('Sorry, the service is unavailable right now.');
     }
-    return $pdo;
+    return $db;
 }

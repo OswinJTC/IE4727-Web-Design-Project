@@ -11,7 +11,7 @@ if ($id !== false) {
 
     $stmt = db()->prepare('SELECT * FROM menu_items WHERE item_id = ? AND is_available = 1');
     $stmt->execute([$id]);
-    $item = $stmt->fetch();
+    $item = $stmt->get_result()->fetch_assoc();
 }
 if (!$item) {
     http_response_code(404);
@@ -22,7 +22,7 @@ $more = [];
 if ($item) {
     $stmt = db()->prepare('SELECT item_id, name, price, image FROM menu_items WHERE category = ? AND item_id <> ? AND is_available = 1 ORDER BY RAND() LIMIT 4');
     $stmt->execute([$item['category'], $item['item_id']]);
-    $more = $stmt->fetchAll();
+    $more = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 }
 ?>
 <!DOCTYPE html>

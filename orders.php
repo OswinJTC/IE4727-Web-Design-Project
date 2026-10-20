@@ -26,7 +26,7 @@ $stmt = db()->prepare(
      ORDER BY o.order_date DESC, o.order_id DESC'
 );
 $stmt->execute([$_SESSION['user_id']]);
-$orders    = $stmt->fetchAll();
+$orders    = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $hasOrders = (bool) $orders;                             // before filtering, to tell "no orders" from "none in this tab"
 
 // ?filter=all|active|completed|cancelled narrows the list to those statuses
@@ -69,7 +69,7 @@ if ($selected) {
          ORDER BY oi.order_item_id'
     );
     $stmt->execute([$selected['order_id']]);
-    $orderItems = $stmt->fetchAll();
+    $orderItems = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 }
 
 // Status name => CSS class for the badge, and the steps shown in the timeline

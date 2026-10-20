@@ -12,7 +12,7 @@ function cart_add(int $id, int $qty = 1): int
 {
     $stmt = db()->prepare('SELECT name, category, image, price FROM menu_items WHERE item_id = ? AND is_available = 1');
     $stmt->execute([$id]);
-    $dish = $stmt->fetch();
+    $dish = $stmt->get_result()->fetch_assoc();
     $count = $_SESSION['cart'][$id]['count'] ?? 0;
 
     $added = min($qty, CART_MAX_PER_DISH - $count);
@@ -90,7 +90,7 @@ function cart_summary(): array
     foreach ($_SESSION['cart'] ?? [] as $id => $line) {
         if (!isset($line['category'], $line['image'])) {
             $stmt->execute([$id]);
-            $_SESSION['cart'][$id] = $line = array_merge($line, $stmt->fetch() ?: ['category' => '', 'image' => '']);
+            $_SESSION['cart'][$id] = $line = array_merge($line, $stmt->get_result()->fetch_assoc() ?: ['category' => '', 'image' => '']);
         }
         $subtotal = $line['price'] * $line['count'];
         $lines[]  = $line + ['item_id' => $id, 'subtotal' => $subtotal];

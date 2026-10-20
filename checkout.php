@@ -18,7 +18,7 @@ $address = '';
 $phone   = '';
 $stmt = db()->prepare('SELECT address, phone FROM users WHERE user_id = ?');
 $stmt->execute([$_SESSION['user_id']]);
-$user = $stmt->fetch();
+$user = $stmt->get_result()->fetch_assoc();
 if ($user) {
     $address = (string) $user['address'];
     $phone   = (string) $user['phone'];
@@ -55,13 +55,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'place
             $total = 0.0;
             foreach ($summary['lines'] as $line) {
                 $stmt->execute([$line['item_id']]);
-                $price  = (float) $stmt->fetchColumn();
+                $price  = (float) ($stmt->get_result()->fetch_row()[0] ?? false);
                 $rows[] = ['item_id' => $line['item_id'], 'count' => $line['count'], 'price' => $price];
                 $total += $price * $line['count'];
             }
 
             // The order and its lines are saved together, or not at all
-            db()->beginTransaction();
+            db()->begin_transaction();
             $stmt = db()->prepare(
                 'INSERT INTO orders (user_id, delivery_address, contact_phone, payment_method, notes, total_amount)
                  VALUES (?, ?, ?, ?, ?, ?)'
@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'place
                 $notes !== '' ? $notes : null,
                 number_format($total, 2, '.', ''),
             ]);
-            $orderId = (int) db()->lastInsertId();
+            $orderId = (int) db()->insert_id;
 
             $stmt = db()->prepare('INSERT INTO order_items (order_id, item_id, quantity, unit_price) VALUES (?, ?, ?, ?)');
             foreach ($rows as $row) {
@@ -85,10 +85,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'place
             unset($_SESSION['cart']);                    // the cart is now an order
             header('Location: orders.php?id=' . $orderId);   // Post/Redirect/Get, showing the new order
             exit;
-        } catch (PDOException $ex) {
-            if (db()->inTransaction()) {
-                db()->rollBack();
-            }
+        } catch (mysqli_sql_exception $ex) {
+            db()->rollback();                            // no-op if the transaction never started
             error_log('Place order failed: ' . $ex->getMessage());
             $errors['form'] = 'Something went wrong. Please try again.';
         }
