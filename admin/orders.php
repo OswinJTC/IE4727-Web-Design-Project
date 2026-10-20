@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
         try {
             $stmt = db()->prepare('SELECT o.status, u.email FROM orders o JOIN users u ON u.user_id = o.user_id WHERE o.order_id = ?');
             $stmt->execute([$orderId]);
-            $order = $stmt->fetch();
+            $order = $stmt->get_result()->fetch_assoc();
             if (!$order) $errors[] = 'This order no longer exists.';
             elseif ($order['status'] === $status) {
                 $_SESSION['admin_flash'] = 'Order #' . $orderId . ' is already ' . $status . '. No email was sent.';
@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
                 header('Location: ' . admin_orders_url(['status' => $filter === 'all' ? 'all' : $status, 'id' => $orderId]));
                 exit;
             }
-        } catch (PDOException $ex) {
+        } catch (mysqli_sql_exception $ex) {
             error_log('Admin orders: ' . $ex->getMessage());
             $errors[] = 'The order could not be updated. Please try again.';
         }
@@ -48,21 +48,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
 }
 
 $counts = array_fill_keys($statuses, 0);
-foreach (db()->query('SELECT status, COUNT(*) AS count FROM orders GROUP BY status')->fetchAll() as $row) $counts[$row['status']] = (int) $row['count'];
+foreach (db()->query('SELECT status, COUNT(*) AS count FROM orders GROUP BY status')->fetch_all(MYSQLI_ASSOC) as $row) $counts[$row['status']] = (int) $row['count'];
 $where = [];
 $params = [];
 if ($filter !== 'all') { $where[] = 'o.status = ?'; $params[] = $filter; }
 if ($q !== '') { $where[] = '(CAST(o.order_id AS CHAR) = ? OR u.full_name LIKE ?)'; $params[] = ltrim($q, '#'); $params[] = '%' . $q . '%'; }
 $stmt = db()->prepare('SELECT o.*, u.full_name FROM orders o JOIN users u ON u.user_id = o.user_id' . ($where ? ' WHERE ' . implode(' AND ', $where) : '') . ' ORDER BY o.order_date DESC, o.order_id DESC');
 $stmt->execute($params);
-$orders = $stmt->fetchAll();
+$orders = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $selected = $orders[0] ?? null;
 foreach ($orders as $order) if ((int) $order['order_id'] === $wantedId) $selected = $order;
 $orderItems = [];
 if ($selected) {
     $stmt = db()->prepare('SELECT oi.quantity, oi.unit_price, m.name FROM order_items oi JOIN menu_items m ON m.item_id = oi.item_id WHERE oi.order_id = ? ORDER BY oi.order_item_id');
     $stmt->execute([$selected['order_id']]);
-    $orderItems = $stmt->fetchAll();
+    $orderItems = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 }
 ?>
 <!DOCTYPE html>

@@ -66,8 +66,8 @@ if ($action === 'register') {
 
             header('Location: register_success.php');   // Post/Redirect/Get
             exit;
-        } catch (PDOException $ex) {
-            if ($ex->getCode() === '23000') {            // duplicate key: email is UNIQUE
+        } catch (mysqli_sql_exception $ex) {
+            if ($ex->getCode() === 1062) {            // 1062 = duplicate key: email is UNIQUE
                 $errors['email'] = 'This email is already registered. Use the log in form.';
             } else {
                 error_log('Register failed: ' . $ex->getMessage());
@@ -92,7 +92,7 @@ if ($action === 'register') {
         try {
             $stmt = db()->prepare('SELECT user_id, full_name, password_hash, role FROM users WHERE email = ?');
             $stmt->execute([$loginEmail]);
-            $user = $stmt->fetch();
+            $user = $stmt->get_result()->fetch_assoc();
 
             if ($user && password_verify($password, $user['password_hash'])) {
                 session_regenerate_id(true);             // new session ID on login
@@ -106,7 +106,7 @@ if ($action === 'register') {
 
             // Same message whether the email or the password was wrong, so it does not reveal which emails exist
             $loginErrors['form'] = 'Incorrect email or password.';
-        } catch (PDOException $ex) {
+        } catch (mysqli_sql_exception $ex) {
             error_log('Login failed: ' . $ex->getMessage());
             $loginErrors['form'] = 'Something went wrong. Please try again.';
         }

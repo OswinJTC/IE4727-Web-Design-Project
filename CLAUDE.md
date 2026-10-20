@@ -15,7 +15,7 @@ Classic PHP embedded in HTML. Each page is a `.php` file that is mostly HTML, wi
 
 ## Stack
 
-- PHP 8 with PDO prepared statements
+- PHP 8.1+ with mysqli prepared statements
 - MySQL/MariaDB, schema name `foodhub`
 - HTML5, one external stylesheet (`css/style.css`), vanilla JS (`js/main.js`)
 - PHPMailer over SMTP for order and contact emails
@@ -64,7 +64,7 @@ Delete rules: `orders.user_id` RESTRICT, `order_items.order_id` CASCADE, `order_
 ## Conventions
 
 - Validate in layers: HTML5 attributes, then JS, then PHP. The PHP check is the one that counts.
-- All SQL goes through PDO prepared statements. No string-built queries.
+- All SQL goes through mysqli prepared statements. No string-built queries.
 - Escape all output with `htmlspecialchars()`. Hash passwords with `password_hash()` / `password_verify()`.
 - No CSRF tokens (kept simple on purpose). Use Post/Redirect/Get after every POST and show messages via `$_SESSION['flash']`.
 - Regenerate the session ID on login. Destroy session and cookies on logout.

@@ -9,12 +9,12 @@ if (!isset($_SESSION['user_id'])) {
 // Check the database too, so a removed admin role takes effect immediately.
 $stmt = db()->prepare('SELECT full_name, role FROM users WHERE user_id = ?');
 $stmt->execute([$_SESSION['user_id']]);
-$admin = $stmt->fetch();
+$admin = $stmt->get_result()->fetch_assoc();
 if (!$admin || $admin['role'] !== 'admin') {
     http_response_code(403);
     exit('You do not have permission to access this page.');
 }
-$pendingCount = (int) db()->query("SELECT COUNT(*) FROM orders WHERE status = 'Pending'")->fetchColumn();
+$pendingCount = (int) (db()->query("SELECT COUNT(*) FROM orders WHERE status = 'Pending'")->fetch_row()[0] ?? 0);
 $flash = $_SESSION['admin_flash'] ?? '';
 unset($_SESSION['admin_flash']);
 

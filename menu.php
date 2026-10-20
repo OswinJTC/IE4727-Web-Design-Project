@@ -31,7 +31,7 @@ if ($q !== '') {
 }
 $stmt = db()->prepare($sql . ' ORDER BY name');
 $stmt->execute($params);
-$items = $stmt->fetchAll();
+$items = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
 // Tab counts come from their own query, not from $items: $items is already filtered by the
 // selected category, so counting it would zero out every other tab. The search still applies,
@@ -44,7 +44,7 @@ if ($q !== '') {
 }
 $stmt = db()->prepare($countSql . ' GROUP BY category');
 $stmt->execute($countParams);
-foreach ($stmt as $row) {
+foreach ($stmt->get_result() as $row) {
     $tabs[$row['category']] = (int) $row['n'];
 }
 

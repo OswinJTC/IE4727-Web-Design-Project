@@ -20,7 +20,7 @@ $items = db()->query(
      WHERE m.is_available = 1
      ORDER BY sold DESC, m.name
      LIMIT 4"
-)->fetchAll();
+)->fetch_all(MYSQLI_ASSOC);
 ?>
 
 <!DOCTYPE html>

@@ -21,7 +21,7 @@ $editing = null;
 if ($editId) {
     $stmt = db()->prepare('SELECT * FROM menu_items WHERE item_id = ?');
     $stmt->execute([$editId]);
-    $editing = $stmt->fetch() ?: null;
+    $editing = $stmt->get_result()->fetch_assoc() ?: null;
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -36,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Keep old orders readable: dishes used by an order can only be hidden.
             $stmt = db()->prepare('SELECT COUNT(*) FROM order_items WHERE item_id = ?');
             $stmt->execute([$itemId]);
-            if ($stmt->fetchColumn()) {
+            if (($stmt->get_result()->fetch_row()[0] ?? 0)) {
                 $stmt = db()->prepare('UPDATE menu_items SET is_available = 0 WHERE item_id = ?');
                 $stmt->execute([$itemId]);
                 $_SESSION['admin_flash'] = 'This dish belongs to past orders, so it was hidden instead of deleted.';
@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Read the saved image from the database, never from a hidden form field.
             $stmt = db()->prepare('SELECT * FROM menu_items WHERE item_id = ?');
             $stmt->execute([$itemId]);
-            $saved = $stmt->fetch();
+            $saved = $stmt->get_result()->fetch_assoc();
             $editing = [
                 'item_id' => $itemId,
                 'name' => trim($_POST['name'] ?? ''),
@@ -99,14 +99,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Location: ' . menu_url());
             exit;
         }
-    } catch (PDOException $ex) {
+    } catch (mysqli_sql_exception $ex) {
         error_log('Admin menu: ' . $ex->getMessage());
         if (!empty($newPhoto)) @unlink(__DIR__ . '/../' . $newPhoto);
         $errors[] = 'The change could not be saved. Please try again.';
     }
 }
 
-$totals = db()->query('SELECT COUNT(*) AS total, COALESCE(SUM(is_available = 1), 0) AS shown FROM menu_items')->fetch();
+$totals = db()->query('SELECT COUNT(*) AS total, COALESCE(SUM(is_available = 1), 0) AS shown FROM menu_items')->fetch_assoc();
 $where = [];
 $params = [];
 if ($q !== '') { $where[] = '(name LIKE ? OR description LIKE ?)'; $params[] = '%' . $q . '%'; $params[] = '%' . $q . '%'; }
@@ -115,13 +115,13 @@ if ($visibility !== '') { $where[] = 'is_available = ?'; $params[] = $visibility
 $sqlWhere = $where ? ' WHERE ' . implode(' AND ', $where) : '';
 $stmt = db()->prepare('SELECT COUNT(*) FROM menu_items' . $sqlWhere);
 $stmt->execute($params);
-$total = (int) $stmt->fetchColumn();
+$total = (int) ($stmt->get_result()->fetch_row()[0] ?? 0);
 $pages = max(1, (int) ceil($total / 5));
 $page = min($page, $pages);
 $offset = ($page - 1) * 5;
 $stmt = db()->prepare('SELECT * FROM menu_items' . $sqlWhere . ' ORDER BY item_id LIMIT 5 OFFSET ' . $offset);
 $stmt->execute($params);
-$items = $stmt->fetchAll();
+$items = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 // Open the first dish by default, like the reference. Cancel closes the editor.
 if (!$editing && !$adding && !$errors && !isset($_GET['closed'])) $editing = $items[0] ?? null;
 if ($adding && !$editing) $editing = ['item_id' => 0, 'name' => '', 'category' => 'Mains', 'price' => '', 'description' => '', 'image' => '', 'is_available' => 1];
