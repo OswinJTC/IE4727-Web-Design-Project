@@ -119,14 +119,18 @@ if ($action === 'register') {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FoodHub | Log in or Sign up</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=<?= filemtime(__DIR__ . '/styles.css') ?>">
 </head>
 <body>
   <div class="page">
     <header class="topbar simple-header">
       <a class="brand" href="index.php"><span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 12h12a6 6 0 0 1-12 0Z"/><path d="M8 6v2M14 5v3"/></svg></span>FoodHub</a>
       <nav class="nav"><a href="index.php">Home</a><a href="menu.php">Menu</a></nav>
-      <?php if (isset($_SESSION['user_id'])) { require __DIR__ . '/includes/auth_nav.php'; } ?>
+      <?php if (isset($_SESSION['user_id'])): ?>
+      <div class="header-account">
+        <?php require __DIR__ . '/includes/auth_nav.php'; ?>
+      </div>
+      <?php endif; ?>
     </header>
     <main>
       <section class="signup-shell auth-shell">
