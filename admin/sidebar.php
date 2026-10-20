@@ -1,7 +1,6 @@
 <aside class="admin-sidebar">
   <a class="brand admin-brand" href="menu_manage.php"><span class="logo"><?= admin_icon('logo') ?></span>FoodHub <span class="admin-tag">ADMIN</span></a>
   <nav class="admin-nav" aria-label="Administration">
-    <span class="admin-nav-disabled" title="Dashboard is not part of these two pages"><?= admin_icon('dashboard') ?> Dashboard</span>
     <a href="menu_manage.php"<?= $activePage === 'menu' ? ' class="active" aria-current="page"' : '' ?>><?= admin_icon('logo') ?> Manage menu</a>
     <a href="orders.php"<?= $activePage === 'orders' ? ' class="active" aria-current="page"' : '' ?>><?= admin_icon('orders') ?> Manage orders <span class="admin-count"><?= $pendingCount ?></span></a>
   </nav>
