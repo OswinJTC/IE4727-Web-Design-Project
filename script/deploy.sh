@@ -13,5 +13,11 @@ rsync -a --itemize-changes \
   --exclude='sql' \
   "$SRC"/ "$DEST"/
 
+# Keep the SMTP secret readable only by its owner and XAMPP's PHP user.
+if [[ -f "$DEST/includes/config.local.php" ]]; then
+  chmod 600 "$DEST/includes/config.local.php"
+  chmod +a "daemon allow read" "$DEST/includes/config.local.php"
+fi
+
 echo "Deployed to $DEST"
 echo "Open: http://localhost:80/IE4727/project/  (use your Apache port; omit it if 80)"
