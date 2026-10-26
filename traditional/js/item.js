@@ -29,10 +29,18 @@
                 }
                 if (!response.ok) throw new Error('Request failed');
                 showNote('Added ' + added + ' to your cart. ', true);
+                return response.text().then(updateBadge);
             })
             .catch(function () {
                 showNote('Could not add to your cart. Please try again.', false);
             });
+    }
+
+    // The reloaded page the server sent back holds the real cart count: copy it into this page's badge
+    function updateBadge(html) {
+        var match = html.match(/id="cart-count">(\d+)</);
+        var badge = document.getElementById('cart-count');
+        if (match && badge) badge.textContent = match[1];
     }
 
     function showNote(text, withCartLink) {

@@ -17,6 +17,8 @@ if (!$item) {
     http_response_code(404);
 }
 
+$summary = cart_summary();                   // for the cart badge in the navbar
+
 // "More in <category>": up to 4 other available dishes from the same category, in random order
 $more = [];
 if ($item) {
@@ -39,7 +41,7 @@ if ($item) {
       <a class="brand" href="index.php"><span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 12h12a6 6 0 0 1-12 0Z"/><path d="M8 6v2M14 5v3"/></svg></span>FoodHub</a>
       <?php require __DIR__ . '/includes/search_bar.php'; ?>
       <nav class="nav"><a href="index.php">Home</a><a class="active" href="menu.php">Menu</a><a href="orders.php">My orders</a></nav>
-      <a class="cart" href="cart.php"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6h15l-2 8H8L6 3H3"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg><span>3</span></a>
+      <a class="cart" href="cart.php"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6h15l-2 8H8L6 3H3"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg><span id="cart-count"><?= $summary['items'] ?></span></a>
       <?php require __DIR__ . '/includes/auth_nav.php'; ?>
     </header>
     <main class="container">

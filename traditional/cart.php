@@ -1,6 +1,11 @@
 <?php
 require __DIR__ . '/includes/cart.php';
 
+if (!isset($_SESSION['user_id'])) {
+    header('Location: login_register.php');              // the cart is for logged-in members only
+    exit;
+}
+
 // ?product_id=ID&action=add|decrease|remove changes the session cart, then comes back here
 cart_handle_request('cart.php');
 
