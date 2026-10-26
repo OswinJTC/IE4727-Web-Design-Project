@@ -19,7 +19,7 @@ const newUser = (over = {}) => ({
 
 describe('login', () => {
   it('logs in a seeded PHP user (bcrypt $2y$ hash) and /me returns them without the hash', async () => {
-    const [[row]] = await pool.query("SELECT password_hash FROM users WHERE email = 'aisha@example.com'");
+    const { rows: [row] } = await pool.query("SELECT password_hash FROM users WHERE email = 'aisha@example.com'");
     expect(row.password_hash.startsWith('$2y$')).toBe(true);
 
     const agent = request.agent(app);
@@ -79,7 +79,7 @@ describe('register', () => {
       .send(newUser({ email: ' New.Person@Example.com ', phone: '9111 2222', address: ' Blk 1 ', role: 'admin' }))
       .expect(201);
     expect(res.body).toEqual({ ok: true });
-    const [[row]] = await pool.query("SELECT * FROM users WHERE email = 'new.person@example.com'");
+    const { rows: [row] } = await pool.query("SELECT * FROM users WHERE email = 'new.person@example.com'");
     expect(row).toMatchObject({ full_name: 'New Person', phone: '91112222', address: 'Blk 1', role: 'customer' });
     expect(row.password_hash).toMatch(/^\$2[aby]\$/);
     await request(app).post('/api/auth/login').send({ email: 'new.person@example.com', password: 'Abcdefg1' }).expect(200);
@@ -87,7 +87,7 @@ describe('register', () => {
 
   it('stores an empty address as NULL', async () => {
     await request(app).post('/api/auth/register').send(newUser({ email: 'noaddr@example.com' })).expect(201);
-    const [[row]] = await pool.query("SELECT address FROM users WHERE email = 'noaddr@example.com'");
+    const { rows: [row] } = await pool.query("SELECT address FROM users WHERE email = 'noaddr@example.com'");
     expect(row.address).toBeNull();
   });
 

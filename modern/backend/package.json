@@ -4,26 +4,26 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "node --watch src/server.js",
+    "start": "node --env-file-if-exists=.env src/server.js",
+    "dev": "node --env-file-if-exists=.env --watch src/server.js",
+    "db:setup": "node --env-file-if-exists=.env scripts/setup-db.js",
     "test": "vitest run"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "express": "^4.22.3",
     "express-session": "^1.19.0",
-    "mysql2": "^3.24.6"
+    "pg": "^8.23.1"
   },
   "devDependencies": {
     "supertest": "^7.3.1",
     "vitest": "^3.2.7"
   },
-  "description": "JSON API for the React app in `../frontend`, running on the **same MySQL/MariaDB database as the PHP version** (`foodhub`). Accounts and orders created in either app work in the other (passwords are bcrypt, readable by PHP's `password_verify`).",
-  "main": "vitest.config.js",
-  "directories": {
-    "test": "test"
-  },
+  "description": "JSON API for the React app in `../frontend`, running on Supabase PostgreSQL.",
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "engines": {
+    "node": ">=22.9"
+  }
 }

@@ -17,7 +17,7 @@ export function authRouter(pool) {
 
   router.get('/me', wrap(async (req, res) => {
     if (!req.session.userId) return res.json({ user: null });
-    const [[row]] = await pool.query('SELECT * FROM users WHERE user_id = ?', [req.session.userId]);
+    const { rows: [row] } = await pool.query('SELECT * FROM users WHERE user_id = $1', [req.session.userId]);
     return res.json({ user: row ? userFromRow(row) : null });
   }));
 
@@ -29,7 +29,7 @@ export function authRouter(pool) {
     if (!isString(password) || password === '') errors.password = 'Enter your password.';
     if (Object.keys(errors).length) return res.status(422).json({ errors });
 
-    const [[row]] = await pool.query('SELECT * FROM users WHERE email = ?', [cleanEmail(email)]);
+    const { rows: [row] } = await pool.query('SELECT * FROM users WHERE email = $1', [cleanEmail(email)]);
     // Same answer whether the email or the password was wrong, so it does not reveal which emails exist
     if (!row || !(await bcrypt.compare(password, row.password_hash))) return res.status(401).json(wrongLogin);
 
@@ -55,11 +55,11 @@ export function authRouter(pool) {
     try {
       // role is never read from the request: new accounts are always customers
       await pool.query(
-        "INSERT INTO users (full_name, email, phone, address, password_hash, role) VALUES (?, ?, ?, ?, ?, 'customer')",
+        "INSERT INTO users (full_name, email, phone, address, password_hash, role) VALUES ($1, $2, $3, $4, $5, 'customer')",
         [full_name.trim(), cleanEmail(email), normalizePhone(phone), cleanAddress || null, hash],
       );
     } catch (err) {
-      if (err.code === 'ER_DUP_ENTRY') {
+      if (err.code === '23505') { // unique_violation on users.email
         return res.status(422).json({ errors: { email: 'This email is already registered. Use the log in form.' } });
       }
       throw err;

@@ -1,31 +1,29 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import mysql from 'mysql2/promise';
+import pg from 'pg';
 import request from 'supertest';
 import { config } from '../src/config.js';
 import { createPool } from '../src/db.js';
 
-const SQL_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../traditional/sql');
+const SQL_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../sql');
 
-// Drop and rebuild the throwaway database from the PHP schema + seed. Never the live foodhub.
-export async function resetTestDb(name = config.db.database) {
-  if (name === 'foodhub') throw new Error('Refusing to reset the live foodhub database');
-  if (!/^[A-Za-z0-9_]+$/.test(name)) throw new Error(`Bad database name: ${name}`);
+// Wipe a test database and rebuild it from sql/schema.sql + seed.sql. vitest.config.js points DATABASE_URL at
+// TEST_DATABASE_URL, and a database whose name does not contain "test" is refused, so live data is never wiped.
+export async function resetTestDb(url = config.databaseUrl) {
+  if (!url) throw new Error('TEST_DATABASE_URL is not set in .env (tests need their own empty Postgres database, e.g. foodhub_test)');
+  const dbName = decodeURIComponent(new URL(url).pathname.slice(1));
+  if (!/test/i.test(dbName)) throw new Error(`Refusing to reset database "${dbName}": its name must contain "test"`);
 
-  const { database, ...server } = config.db;
-  const conn = await mysql.createConnection({ ...server, multipleStatements: true });
+  const client = new pg.Client({ connectionString: url });
+  await client.connect();
   try {
-    await conn.query(`DROP DATABASE IF EXISTS \`${name}\``);
-    for (const file of ['schema.sql', 'seed.sql']) {
-      const sql = readFileSync(path.join(SQL_DIR, file), 'utf8')
-        .replace(/^(CREATE DATABASE IF NOT EXISTS |USE )foodhub\b/gm, `$1${name}`);
-      await conn.query(sql);
-    }
+    await client.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public;');
+    for (const file of ['schema.sql', 'seed.sql']) await client.query(readFileSync(path.join(SQL_DIR, file), 'utf8'));
   } finally {
-    await conn.end();
+    await client.end();
   }
-  return createPool({ ...config.db, database: name });
+  return createPool(url);
 }
 
 // supertest agent that keeps cookies, optionally logged in as a seeded user (password Password123)

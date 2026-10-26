@@ -11,7 +11,7 @@ let tea; // 2.20
 beforeAll(async () => {
   pool = await resetTestDb();
   app = createApp({ pool, sessionSecret: 'test' });
-  const [rows] = await pool.query("SELECT item_id, name FROM menu_items WHERE name IN ('Curry laksa','Iced lemon tea')");
+  const { rows: rows } = await pool.query("SELECT item_id, name FROM menu_items WHERE name IN ('Curry laksa','Iced lemon tea')");
   laksa = rows.find((r) => r.name === 'Curry laksa').item_id;
   tea = rows.find((r) => r.name === 'Iced lemon tea').item_id;
 });
@@ -91,11 +91,11 @@ describe('members', () => {
     const agent = await loginAgent(app, 'aisha@example.com');
     await add(agent, laksa, 1);
     await add(agent, tea, 1);
-    await pool.query('UPDATE menu_items SET is_available = 0 WHERE item_id = ?', [tea]);
+    await pool.query('UPDATE menu_items SET is_available = FALSE WHERE item_id = $1', [tea]);
     const res = await agent.get('/api/cart').expect(200);
     expect(res.body.lines.map((l) => l.id)).toEqual([laksa]);
     expect(res.body.total).toBe(7.2);
-    await pool.query('UPDATE menu_items SET is_available = 1 WHERE item_id = ?', [tea]);
+    await pool.query('UPDATE menu_items SET is_available = TRUE WHERE item_id = $1', [tea]);
   });
 
   it('logging out clears the cart', async () => {

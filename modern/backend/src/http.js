@@ -1,16 +1,17 @@
 // Express 4 does not catch rejected promises, so every async handler goes through wrap()
 export const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
-// Positive integer that fits an INT UNSIGNED column, or null
+// Positive integer that fits a Postgres INTEGER column, or null
 export function parseId(raw) {
   if (typeof raw !== 'string' && typeof raw !== 'number') return null;
   const s = String(raw);
   if (!/^[1-9]\d{0,9}$/.test(s)) return null;
   const n = Number(s);
-  return n <= 4294967295 ? n : null;
+  return n <= 2147483647 ? n : null;
 }
 
-const DB_DOWN = new Set(['ECONNREFUSED', 'ETIMEDOUT', 'PROTOCOL_CONNECTION_LOST', 'ER_ACCESS_DENIED_ERROR', 'ER_BAD_DB_ERROR', 'ENOTFOUND']);
+// Node network errors, plus Postgres: bad password, unknown database, server shutting down, connection failures
+const DB_DOWN = new Set(['ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', '28P01', '3D000', '57P01', '57P03', '08000', '08001', '08006']);
 
 // Last middleware: JSON errors that never leak internals
 export function errorHandler(err, req, res, next) {

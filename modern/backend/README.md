@@ -1,17 +1,29 @@
-# FoodHub API (Express)
+# FoodHub API (Express + Supabase PostgreSQL)
 
-JSON API for the React app in `../frontend`, running on the **same MySQL/MariaDB database as the PHP version** (`foodhub`).
-Accounts and orders created in either app work in the other (passwords are bcrypt, readable by PHP's `password_verify`).
+JSON API for the React app in `../frontend`. Data lives in a **Supabase PostgreSQL** database, reached with the `pg` driver.
+The PHP version in `../../traditional` still uses its own MySQL `foodhub` database; the two no longer share data.
+Passwords are bcrypt hashes in a `users` table (Supabase Auth is not used), and sessions are kept in memory.
+
+## Set up Supabase (once)
+
+1. Create a project at supabase.com, click **Connect**, and copy a connection string. Put your database password in it
+   (percent-encode special characters). The **Direct connection** string is IPv6-only unless you buy the IPv4 add-on;
+   if you get a connection error on an IPv4-only network, use the **Session pooler** string instead.
+2. `cp .env.example .env` and paste it as `DATABASE_URL`. `.env` is git-ignored.
+3. `npm install && npm run db:setup` creates the tables and loads the sample dishes, users and orders.
+   It never drops anything and is safe to re-run. (Alternative: paste `sql/schema.sql`, then `sql/seed.sql`, into the Supabase SQL editor.)
+   The schema turns on Row Level Security for every table with no policies, so the public Supabase REST API cannot read
+   password hashes. This API connects as the database owner, which bypasses RLS.
 
 ## Run
 
-1. Start MySQL in XAMPP and make sure `foodhub` exists (`traditional/script/seed.sh`).
-2. `cd modern/backend && npm install && npm start` (port 3001). `npm run dev` restarts on changes.
-3. `cd modern/frontend && npm install && npm run dev` (port 5173; Vite proxies `/api` to Express).
+1. `cd modern/backend && npm start` (port 3001; `npm run dev` restarts on changes). Needs Node 22.9+ for `--env-file-if-exists`.
+2. `cd modern/frontend && npm install && npm run dev` (port 5173; Vite proxies `/api` to Express).
 
-Settings come from environment variables; the defaults are the XAMPP ones:
-`DB_HOST=127.0.0.1 DB_PORT=3306 DB_USER=root DB_PASS= DB_NAME=foodhub PORT=3001 SESSION_SECRET=dev-only-change-me`.
+`DATABASE_URL` is the only setting read from `.env` (plus `TEST_DATABASE_URL` for tests). The port (3001) and the session secret
+are fixed in `src/config.js`. If the server refuses a connection without TLS, add `?sslmode=no-verify` to the end of `DATABASE_URL`.
 Sessions are kept in memory, so they (and carts) disappear when the server restarts.
+Sample logins: `aisha@example.com` / `Password123` (customer), `admin@foodhub.test` / `Password123`.
 
 ## API
 
@@ -33,5 +45,8 @@ Not logged in on a "yes" route: 401 `{ error: 'Login required' }`. Database unre
 
 ## Tests
 
-`npm test` runs against a throwaway database **`foodhub_test`**, dropped and rebuilt from `traditional/sql/schema.sql` + `seed.sql`
-before each test file. The harness refuses to run on `foodhub`, so your own accounts and orders are never touched.
+The tests wipe and rebuild a database from `sql/schema.sql` + `sql/seed.sql` before each test file, so they need their own
+**empty** database, separate from the real one. Locally: `createdb foodhub_test`, then add
+`TEST_DATABASE_URL=postgresql://localhost:5432/foodhub_test` to `.env` and run `npm test`.
+Two guards protect the real data: the tests refuse a database whose name does not contain "test", and refuse to start if
+`TEST_DATABASE_URL` equals `DATABASE_URL`.

@@ -9,12 +9,12 @@ let laksa;
 beforeAll(async () => {
   pool = await resetTestDb();
   app = createApp({ pool, sessionSecret: 'test' });
-  [[{ item_id: laksa }]] = await pool.query("SELECT item_id FROM menu_items WHERE name = 'Curry laksa'");
+  ({ rows: [{ item_id: laksa }] } = await pool.query("SELECT item_id FROM menu_items WHERE name = 'Curry laksa'"));
 });
 afterAll(() => pool.end());
 
 const details = { address: 'Blk 1 Test Street', phone: '91234567', payment: 'cash', notes: '' };
-const orderCount = async () => (await pool.query('SELECT COUNT(*) AS n FROM orders'))[0][0].n;
+const orderCount = async () => (await pool.query('SELECT COUNT(*) AS n FROM orders')).rows[0].n;
 
 describe('requests from one session that arrive at the same time', () => {
   it('a double submit of Place order creates exactly one order', async () => {

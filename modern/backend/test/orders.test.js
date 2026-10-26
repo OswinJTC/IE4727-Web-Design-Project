@@ -9,8 +9,8 @@ let laksa; // 7.20
 let tea; // 2.20
 
 const details = (over = {}) => ({ address: ' Blk 1 Test Street ', phone: '9123 4567', payment: 'cash', notes: '', ...over });
-const orderCount = async () => (await pool.query('SELECT COUNT(*) AS n FROM orders'))[0][0].n;
-const userId = async (email) => (await pool.query('SELECT user_id FROM users WHERE email = ?', [email]))[0][0].user_id;
+const orderCount = async () => (await pool.query('SELECT COUNT(*) AS n FROM orders')).rows[0].n;
+const userId = async (email) => (await pool.query('SELECT user_id FROM users WHERE email = $1', [email])).rows[0].user_id;
 const fillCart = async (agent) => {
   await agent.post('/api/cart/items').send({ dishId: laksa, qty: 1 });
   await agent.post('/api/cart/items').send({ dishId: tea, qty: 2 });
@@ -19,7 +19,7 @@ const fillCart = async (agent) => {
 beforeAll(async () => {
   pool = await resetTestDb();
   app = createApp({ pool, sessionSecret: 'test' });
-  const [rows] = await pool.query("SELECT item_id, name FROM menu_items WHERE name IN ('Curry laksa','Iced lemon tea')");
+  const { rows: rows } = await pool.query("SELECT item_id, name FROM menu_items WHERE name IN ('Curry laksa','Iced lemon tea')");
   laksa = rows.find((r) => r.name === 'Curry laksa').item_id;
   tea = rows.find((r) => r.name === 'Iced lemon tea').item_id;
 });
@@ -37,7 +37,7 @@ describe('GET /api/orders', () => {
   it("lists only the caller's orders, newest first, with items and counts", async () => {
     const agent = await loginAgent(app, 'aisha@example.com');
     const res = await agent.get('/api/orders').expect(200);
-    const [[{ n }]] = await pool.query('SELECT COUNT(*) AS n FROM orders WHERE user_id = ?', [await userId('aisha@example.com')]);
+    const { rows: [{ n }] } = await pool.query('SELECT COUNT(*) AS n FROM orders WHERE user_id = $1', [await userId('aisha@example.com')]);
     expect(res.body).toHaveLength(n);
     const dates = res.body.map((o) => o.date);
     expect([...dates].sort().reverse()).toEqual(dates);
@@ -55,7 +55,7 @@ describe('GET /api/orders', () => {
   it("never shows another customer's orders", async () => {
     const agent = await loginAgent(app, 'aisha@example.com');
     const mine = (await agent.get('/api/orders')).body.map((o) => o.id);
-    const [others] = await pool.query('SELECT order_id FROM orders WHERE user_id <> ?', [await userId('aisha@example.com')]);
+    const { rows: others } = await pool.query('SELECT order_id FROM orders WHERE user_id <> $1', [await userId('aisha@example.com')]);
     expect(others.length).toBeGreaterThan(0);
     for (const { order_id } of others) expect(mine).not.toContain(order_id);
   });
@@ -71,12 +71,12 @@ describe('POST /api/orders', () => {
       .expect(201);
     expect(await orderCount()).toBe(before + 1);
 
-    const [[order]] = await pool.query('SELECT * FROM orders WHERE order_id = ?', [res.body.orderId]);
+    const { rows: [order] } = await pool.query('SELECT * FROM orders WHERE order_id = $1', [res.body.orderId]);
     expect(order).toMatchObject({
       user_id: await userId('aisha@example.com'), status: 'Pending', payment_method: 'cash', total_amount: 11.6,
       delivery_address: 'Blk 1 Test Street', contact_phone: '91234567', notes: 'Less spicy',
     });
-    const [lines] = await pool.query('SELECT item_id, quantity, unit_price FROM order_items WHERE order_id = ? ORDER BY item_id', [res.body.orderId]);
+    const { rows: lines } = await pool.query('SELECT item_id, quantity, unit_price FROM order_items WHERE order_id = $1 ORDER BY item_id', [res.body.orderId]);
     expect(lines).toEqual([
       { item_id: laksa, quantity: 1, unit_price: 7.2 },
       { item_id: tea, quantity: 2, unit_price: 2.2 },
@@ -91,7 +91,7 @@ describe('POST /api/orders', () => {
     const agent = await loginAgent(app, 'aisha@example.com');
     await fillCart(agent);
     const res = await agent.post('/api/orders').send(details({ payment: 'paynow', notes: '   ' })).expect(201);
-    const [[order]] = await pool.query('SELECT notes, payment_method FROM orders WHERE order_id = ?', [res.body.orderId]);
+    const { rows: [order] } = await pool.query('SELECT notes, payment_method FROM orders WHERE order_id = $1', [res.body.orderId]);
     expect(order).toEqual({ notes: null, payment_method: 'paynow' });
   });
 
@@ -128,19 +128,22 @@ describe('POST /api/orders', () => {
   it('a dish hidden after it was added cannot be ordered', async () => {
     const agent = await loginAgent(app, 'aisha@example.com');
     await agent.post('/api/cart/items').send({ dishId: tea, qty: 1 });
-    await pool.query('UPDATE menu_items SET is_available = 0 WHERE item_id = ?', [tea]);
+    await pool.query('UPDATE menu_items SET is_available = FALSE WHERE item_id = $1', [tea]);
     const res = await agent.post('/api/orders').send(details()).expect(422);
     expect(res.body.errors.form).toBe('Your cart is empty.');
-    await pool.query('UPDATE menu_items SET is_available = 1 WHERE item_id = ?', [tea]);
+    await pool.query('UPDATE menu_items SET is_available = TRUE WHERE item_id = $1', [tea]);
   });
 
   it('rolls everything back when saving a line fails', async () => {
     const failing = {
       query: (...a) => pool.query(...a),
-      async getConnection() {
-        const conn = await pool.getConnection();
-        const query = conn.query.bind(conn);
-        conn.query = (sql, ...rest) => (/INSERT INTO order_items/.test(sql) ? Promise.reject(Object.assign(new Error('boom'), { code: 'ER_FORCED' })) : query(sql, ...rest));
+      async connect() {
+        const conn = await pool.connect();
+        const query = conn.query;
+        const release = conn.release;
+        // pg reuses connection objects, so put the real query and release back when this checkout ends
+        conn.query = (sql, ...rest) => (/INSERT INTO order_items/.test(sql) ? Promise.reject(Object.assign(new Error('boom'), { code: 'FORCED' })) : query.call(conn, sql, ...rest));
+        conn.release = (...args) => { conn.query = query; conn.release = release; return release.apply(conn, args); };
         return conn;
       },
     };
@@ -161,7 +164,7 @@ describe('POST /api/orders/:id/cancel', () => {
     await fillCart(agent);
     return (await agent.post('/api/orders').send(details()).expect(201)).body.orderId;
   };
-  const statusOf = async (id) => (await pool.query('SELECT status FROM orders WHERE order_id = ?', [id]))[0][0].status;
+  const statusOf = async (id) => (await pool.query('SELECT status FROM orders WHERE order_id = $1', [id])).rows[0].status;
 
   it('cancels your own Pending order once', async () => {
     const agent = await loginAgent(app, 'aisha@example.com');
@@ -182,10 +185,10 @@ describe('POST /api/orders/:id/cancel', () => {
   it('cannot cancel an order that is no longer Pending', async () => {
     const agent = await loginAgent(app, 'aisha@example.com');
     const id = await place(agent);
-    await pool.query("UPDATE orders SET status = 'Preparing' WHERE order_id = ?", [id]);
+    await pool.query("UPDATE orders SET status = 'Preparing' WHERE order_id = $1", [id]);
     await agent.post(`/api/orders/${id}/cancel`).expect(409);
     expect(await statusOf(id)).toBe('Preparing');
-    const [[delivered]] = await pool.query("SELECT order_id FROM orders WHERE status = 'Delivered' AND user_id = ? LIMIT 1", [await userId('aisha@example.com')]);
+    const { rows: [delivered] } = await pool.query("SELECT order_id FROM orders WHERE status = 'Delivered' AND user_id = $1 LIMIT 1", [await userId('aisha@example.com')]);
     await agent.post(`/api/orders/${delivered.order_id}/cancel`).expect(409);
   });
 

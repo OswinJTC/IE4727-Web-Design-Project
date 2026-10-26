@@ -10,20 +10,20 @@ export const dishFromRow = (r) => ({
 });
 
 export async function listAvailableDishes(pool) {
-  const [rows] = await pool.query('SELECT * FROM menu_items WHERE is_available = 1 ORDER BY name');
+  const { rows } = await pool.query('SELECT * FROM menu_items WHERE is_available ORDER BY name');
   return rows.map(dishFromRow);
 }
 
 // Raw menu_items rows keyed by id, available dishes only
 export async function getAvailableRows(pool, ids) {
   if (ids.length === 0) return new Map();
-  const [rows] = await pool.query('SELECT * FROM menu_items WHERE is_available = 1 AND item_id IN (?)', [ids]);
+  const { rows } = await pool.query('SELECT * FROM menu_items WHERE is_available AND item_id = ANY($1::int[])', [ids]);
   return new Map(rows.map((r) => [r.item_id, r]));
 }
 
 // Top dishes by units in non-cancelled orders; never-ordered dishes sort last, then by name (same as index.php)
 export async function bestSellers(pool, limit = 4) {
-  const [rows] = await pool.query(
+  const { rows } = await pool.query(
     `SELECT m.*, COALESCE(s.sold, 0) AS sold
      FROM menu_items m
      LEFT JOIN (
@@ -32,9 +32,9 @@ export async function bestSellers(pool, limit = 4) {
        WHERE o.status <> 'Cancelled'
        GROUP BY oi.item_id
      ) s ON s.item_id = m.item_id
-     WHERE m.is_available = 1
+     WHERE m.is_available
      ORDER BY sold DESC, m.name
-     LIMIT ?`,
+     LIMIT $1`,
     [limit],
   );
   return rows.map(dishFromRow);

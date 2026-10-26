@@ -7,7 +7,7 @@ NTU IE4727 Web Design Project 1. An online food ordering site where guests brows
 | Folder | What | Run |
 |---|---|---|
 | `traditional/` | The PHP app (XAMPP). Everything below this section describes it. Paths such as `cart.php` or `sql/schema.sql` are relative to this folder. | `traditional/script/deploy.sh`, `seed.sh`, `reset_db.sh` |
-| `modern/backend/` | Express + mysql2 JSON API on the **same `foodhub` database**. See its README. | `npm start` (port 3001), `npm test` (uses throwaway DB `foodhub_test`, never `foodhub`) |
+| `modern/backend/` | Express + `pg` JSON API on **Supabase PostgreSQL** (schema in `sql/`, connection string in `.env`). Does not share data with the PHP MySQL database. See its README. | `npm start` (port 3001), `npm run db:setup`, `npm test` (uses throwaway schema `foodhub_test`, never `public`) |
 | `modern/frontend/` | React + Vite + Tailwind CSS v4 (tokens in `src/index.css`, shared class strings in `src/lib/ui.js`), customer pages only (no admin yet). Talks to the API through `src/api/client.js`; Vite proxies `/api`. | `npm run dev` (port 5173), `npm test` |
 
 Design docs for the modern version: `docs/superpowers/specs/` and `docs/superpowers/plans/`.
