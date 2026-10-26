@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+/* Design tokens: the same paprika / charcoal / stone palette as before */
+@theme {
+  --color-bg: #f6f5f3;
+  --color-ink: #1a1816;
+  --color-muted: #6d6560;
+  --color-line: #ded9d4;
+  --color-brand: #cf3a08;
+  --color-brand-dark: #a92d06;
+  --color-brand-soft: #fff0ea;
+  --color-night: #171512;
+  --color-sun: #ffd34f;
+  --color-peach: #fbe9d9;
+  --color-cream: #f0e9df;
+  --color-mint: #e9f2e5;
+  --color-sky: #e4eef5;
+  --color-blush: #f2e2e7;
+  --color-ok: #2f7a45;
+  --color-ok-soft: #e9f4ec;
+  --color-danger: #b4231a;
+  --color-st-pending: #fff0e4;
+  --color-st-preparing: #e3ecfb;
+  --color-st-delivery: #efe6fb;
+  --color-st-delivered: #e4f3e7;
+  --color-st-cancelled: #ebe9e6;
+
+  /* The old stylesheet used the browser's normal line-height for every size */
+  --text-xs--line-height: normal;
+  --text-sm--line-height: normal;
+  --text-base--line-height: normal;
+  --text-lg--line-height: normal;
+  --text-xl--line-height: normal;
+  --text-2xl--line-height: normal;
+
+  --font-sans: "Arial Rounded MT Bold", "Trebuchet MS", Arial, sans-serif;
+  --font-body: Arial, sans-serif;
+
+  /* Layout breakpoints used by max-tablet: and max-mobile: */
+  --breakpoint-tablet: 61.25rem;
+  --breakpoint-mobile: 38.75rem;
+}
+
+@layer base {
+  html { background: var(--color-bg); color: var(--color-ink); line-height: normal; }
+  body { min-width: 320px; background: var(--color-bg); }
+  a { color: inherit; text-decoration: none; }
+  p, input, textarea, select, label { font-family: var(--font-body); }
+  button:not(:disabled) { cursor: pointer; }
+}

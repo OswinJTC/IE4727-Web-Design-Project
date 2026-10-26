@@ -2,9 +2,18 @@
 
 NTU IE4727 Web Design Project 1. An online food ordering site where guests browse a menu, members order food, and admins manage the menu and orders. Brief: `IE4727 Web Design Project 1.pdf`.
 
-> Status: design phase done (requirements doc, wireframes, ERD). The application code is not written yet. Build to the structure and rules below.
+## Two versions of the same site
 
-## Architecture
+| Folder | What | Run |
+|---|---|---|
+| `traditional/` | The PHP app (XAMPP). Everything below this section describes it. Paths such as `cart.php` or `sql/schema.sql` are relative to this folder. | `traditional/script/deploy.sh`, `seed.sh`, `reset_db.sh` |
+| `modern/backend/` | Express + mysql2 JSON API on the **same `foodhub` database**. See its README. | `npm start` (port 3001), `npm test` (uses throwaway DB `foodhub_test`, never `foodhub`) |
+| `modern/frontend/` | React + Vite + Tailwind CSS v4 (tokens in `src/index.css`, shared class strings in `src/lib/ui.js`), customer pages only (no admin yet). Talks to the API through `src/api/client.js`; Vite proxies `/api`. | `npm run dev` (port 5173), `npm test` |
+
+Design docs for the modern version: `docs/superpowers/specs/` and `docs/superpowers/plans/`.
+Shared rules (20 per dish, prices re-read from the DB, cancel only own Pending orders) live in both stacks; change them in both.
+
+## Architecture (traditional PHP version)
 
 Classic PHP embedded in HTML. Each page is a `.php` file that is mostly HTML, with `<?php ... ?>` blocks inserted where dynamic content is needed (loops over query results, `echo` of values, `if` blocks for logged-in state). It is not a separate front-end/back-end app.
 
