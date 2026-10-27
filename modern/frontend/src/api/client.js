@@ -9,13 +9,14 @@ export class ApiError extends Error {
 }
 
 async function request(method, path, body) {
+  const multipart = body instanceof FormData;
   let res;
   try {
     res = await fetch(`/api${path}`, {
       method,
       credentials: 'same-origin',
-      headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      headers: body === undefined || multipart ? undefined : { 'Content-Type': 'application/json' },
+      body: body === undefined ? undefined : multipart ? body : JSON.stringify(body),
     });
   } catch {
     throw new ApiError(0, null); // network failure: the server could not be reached
@@ -48,4 +49,11 @@ export const api = {
   orders: () => request('GET', '/orders'),
   placeOrder: (details) => request('POST', '/orders', details), // -> { orderId }
   cancelOrder: (id) => request('POST', `/orders/${id}/cancel`),
+
+  adminMenu: () => request('GET', '/admin/menu'),
+  adminSaveDish: (id, data) => request(id ? 'PUT' : 'POST', id ? `/admin/menu/${id}` : '/admin/menu', data),
+  adminVisibility: (id, available) => request('PATCH', `/admin/menu/${id}/visibility`, { available }),
+  adminDeleteDish: (id) => request('DELETE', `/admin/menu/${id}`),
+  adminOrders: () => request('GET', '/admin/orders'),
+  adminOrderStatus: (id, status) => request('PATCH', `/admin/orders/${id}/status`, { status }),
 };

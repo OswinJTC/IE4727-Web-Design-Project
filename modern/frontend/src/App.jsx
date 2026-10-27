@@ -1,4 +1,6 @@
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
+import ManageMenu from './pages/admin/ManageMenu';
+import AdminLayout, { ManageOrders } from './pages/admin/Admin';
 import Home from "./pages/Home";
 import Menu from "./pages/Menu";
 import Item from "./pages/Item";
@@ -41,6 +43,12 @@ export default function App() {
             <Route path="/orders" element={<Orders />} />
             <Route path="/login" element={<LoginRegister />} />
             <Route path="/register-success" element={<RegisterSuccess />} />
+            <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<Navigate to="orders" replace />} />
+                <Route path="dashboard" element={<Navigate to="/admin/orders" replace />} />
+                <Route path="menu" element={<ManageMenu />} />
+                <Route path="orders" element={<ManageOrders />} />
+            </Route>
             <Route path="*" element={<NotFound />} />
         </Routes>
     );

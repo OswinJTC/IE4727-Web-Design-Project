@@ -6,9 +6,10 @@ import { authRouter } from './routes/auth.js';
 import { cartRouter } from './routes/cart.js';
 import { ordersRouter } from './routes/orders.js';
 import { dishesRouter } from './routes/dishes.js';
+import { adminRouter, uploadDirectory } from './routes/admin.js';
 
 // Builds the Express app around an injected pool, so tests can use a throwaway database
-export function createApp({ pool, sessionSecret }) {
+export function createApp({ pool, sessionSecret, sendStatusEmail, uploads = uploadDirectory }) {
   const app = express();
   app.disable('x-powered-by');
   app.use(express.json({ limit: '50kb' }));
@@ -25,6 +26,8 @@ export function createApp({ pool, sessionSecret }) {
   app.use('/api/auth', authRouter(pool));
   app.use('/api/cart', cartRouter(pool));
   app.use('/api/orders', ordersRouter(pool));
+  app.use('/api/admin', adminRouter(pool, { sendStatusEmail, uploads }));
+  app.use('/api/uploads', express.static(uploads, { dotfiles: 'deny', index: false }));
 
   app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
   app.use(errorHandler);

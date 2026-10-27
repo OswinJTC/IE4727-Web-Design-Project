@@ -16,6 +16,7 @@ const DB_DOWN = new Set(['ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND',
 // Last middleware: JSON errors that never leak internals
 export function errorHandler(err, req, res, next) {
   if (res.headersSent) return next(err);
+  if (err.name === 'MulterError') return res.status(422).json({ errors: { photo: 'Choose one JPG or PNG photo up to 2 MB.' } });
   if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'Invalid JSON' });
   if (err.type === 'entity.too.large') return res.status(413).json({ error: 'Request too large' });
   if (DB_DOWN.has(err.code) || err.errors?.some?.((e) => DB_DOWN.has(e.code))) {

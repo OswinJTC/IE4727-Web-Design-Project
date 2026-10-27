@@ -79,13 +79,14 @@ export function ShopProvider({ children }) {
     summary,
     orders,
     ordersReady,
+    sessionEnded,
 
     async login(email, password) {
       try {
         const me = await api.login(email, password);
         setUser(me); // the server has logged us in: whatever happens next, we are logged in
         await api.cart().then(setSummary).catch(() => {}); // an empty cart shows until the next change
-        return { ok: true };
+        return { ok: true, user: me };
       } catch (err) {
         if (err instanceof ApiError && err.status !== 0) return { ok: false, error: err.message, errors: err.errors };
         return { ok: false, error: GENERIC };
