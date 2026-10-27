@@ -32,6 +32,7 @@ namespace PHPMailer\PHPMailer;
 class PHPMailer {
     public function __construct($exceptions = false) {}
     public function isSMTP() {}
+    public function isHTML($value = true) { $this->html = $value; }
     public function setFrom($email, $name = '') {}
     public function addReplyTo($email, $name = '') {}
     public function addAddress($email) { $this->recipient = $email; }
@@ -43,6 +44,7 @@ class PHPMailer {
         $count = $db->query('SELECT COUNT(*) FROM order_items WHERE order_id = ' . $id)->fetch_row()[0];
         file_put_contents(getenv('FOODHUB_TEST_MAILBOX'), json_encode([
             'to' => $this->recipient, 'subject' => $this->Subject, 'body' => $this->Body,
+            'text' => $this->AltBody, 'html' => $this->html,
             'committed' => $order !== null && $count > 0, 'order' => $order,
         ]) . PHP_EOL, FILE_APPEND | LOCK_EX);
         if (is_file(getenv('FOODHUB_TEST_FAIL_MAIL'))) throw new \RuntimeException('Test SMTP failure');
@@ -117,8 +119,11 @@ def main():
             assert count_orders() == before + 1
             receipt = messages()[0]
             assert receipt['to'] == 'aisha@example.com' and receipt['committed']
+            assert receipt['html'] and 'aria-label="Order items"' in receipt['body']
+            assert 'Order placed successfully.' in receipt['body']
+            assert receipt['body'].index('ORDER TOTAL') < receipt['body'].index('aria-label="Order items"')
             for value in ['Aisha Lim', '2 × Curry laksa @ $8.15 = $16.30', 'Total: $16.30', '1 Test Street', '91234567', 'Cash on delivery', 'Less spicy']:
-                assert value in receipt['body'], f'Missing receipt detail: {value}'
+                assert value in receipt['text'], f'Missing receipt detail: {value}'
             print('PASS: confirmation is sent after commit to the account email, using current DB prices.')
 
             request('/checkout.php', details)
@@ -162,6 +167,26 @@ def main():
             assert len(messages()) == 3 and 'Preparing' in messages()[-1]['subject']
             print('PASS: admin status emails still use the shared mail transport.')
             print('PASS: the storefront Admin link is visible only to administrators.')
+
+            for status in ['Pending', 'Out for delivery', 'Delivered', 'Cancelled']:
+                request('/admin/orders.php', {'action': 'update_status', 'order_id': order_id, 'status': status})
+                message = messages()[-1]
+                assert message['html'] and status in message['body'] and status in message['text']
+                if status == 'Cancelled':
+                    assert 'ORDER PROGRESS' not in message['body']
+            print('PASS: all five status emails include HTML and a plain-text alternative.')
+
+            sql(f"UPDATE {DATABASE}.users SET full_name = 'Aisha & <b>Lim</b>' WHERE email = 'aisha@example.com'")
+            request('/login_register.php', {'action': 'login', 'email': 'aisha@example.com', 'password': 'Password123'})
+            request(add)
+            request('/checkout.php', {**details, 'address': '1 <Test> Street', 'notes': '<script>alert(1)</script>'})
+            receipt = messages()[-1]
+            assert 'Aisha &amp; &lt;b&gt;Lim&lt;/b&gt;' in receipt['body']
+            assert '1 &lt;Test&gt; Street' in receipt['body']
+            assert '<script>' not in receipt['body'] and '&lt;script&gt;' in receipt['body']
+            assert '<script>' in receipt['text']
+            print('PASS: HTML escapes customer content and keeps the plain-text receipt intact.')
+
     finally:
         if server is not None:
             server.terminate()

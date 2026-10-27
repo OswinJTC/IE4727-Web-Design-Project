@@ -58,6 +58,11 @@ The React app uses the modern backend's settings, independently of PHP's SMTP co
 Status changes are saved before sending. Missing settings or SMTP failures are reported while keeping the saved status.
 An unchanged status sends no duplicate email. SMTP acceptance is reported as acceptance, not guaranteed inbox delivery.
 
+Both notification types use a shared FoodHub HTML layout: a branded header, order number and status badge,
+delivery progress for active orders, and a receipt table and delivery card for checkout confirmations.
+Inline styles and presentation tables support email clients with limited CSS, with a narrow-screen layout and
+a plain-text alternative. Customer names, dish names, addresses, and notes are HTML-escaped.
+
 Successful customer checkout also sends a confirmation to the logged-in account's email, using server-side order data:
 order number, Pending status, dish names, quantities, saved unit prices, total, payment method, delivery address, phone,
 and optional kitchen notes. The order and its lines are committed and the cart cleared before SMTP runs.

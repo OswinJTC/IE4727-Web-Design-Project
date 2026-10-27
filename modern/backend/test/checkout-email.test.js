@@ -184,9 +184,14 @@ describe('shared SMTP transport and receipt content', () => {
         to: receipt.email,
         subject: 'FoodHub: Order #42 confirmed',
         text: expect.stringContaining('2 × Curry laksa @ $7.20 = $14.40'),
+        html: expect.stringContaining('aria-label="Order items"'),
       }),
     );
     const text = mock.sendMail.mock.calls[0][0].text;
+    const html = mock.sendMail.mock.calls[0][0].html;
+    expect(html).toContain('Order placed successfully.');
+    expect(html.indexOf('ORDER TOTAL')).toBeLessThan(html.indexOf('aria-label="Order items"'));
+    expect(html.indexOf('$14.40')).toBeLessThan(html.indexOf('aria-label="Order items"'));
     for (const value of [
       'Test Customer',
       'Status: Pending',
@@ -201,6 +206,48 @@ describe('shared SMTP transport and receipt content', () => {
     expect(mock.sendMail.mock.calls[1][0].subject).toContain('Preparing');
     expect(mock.close).toHaveBeenCalledTimes(2);
   });
+
+  it('escapes customer and dish content in HTML while preserving a readable plain-text alternative', async () => {
+    const mock = transport();
+    await sendOrderConfirmationEmail({
+      ...receipt,
+      name: 'Aisha & <b>Lim</b>',
+      address: '1 <Test> Street\nUnit 2',
+      notes: '<script>alert("test")</script>',
+      items: [{ name: '<img src=x onerror=alert(1)>', quantity: 2, unitPrice: 7.2 }],
+    });
+    const { html, text } = mock.sendMail.mock.calls[0][0];
+    expect(html).toContain('Aisha &amp; &lt;b&gt;Lim&lt;/b&gt;');
+    expect(html).toContain('1 &lt;Test&gt; Street<br>Unit 2');
+    expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;');
+    expect(html).not.toContain('<script>');
+    expect(html).not.toContain('<img src=x');
+    expect(text).toContain('Aisha & <b>Lim</b>');
+    expect(text).toContain('Total: $14.40');
+  });
+
+  it.each(['Pending', 'Preparing', 'Out for delivery', 'Delivered', 'Cancelled'])(
+    'provides HTML and plain text for the %s status notification',
+    async (status) => {
+      const mock = transport();
+      await sendOrderStatusEmail({ email: receipt.email, orderId: 42, status });
+      const { html, text } = mock.sendMail.mock.calls[0][0];
+      expect(html).toContain('<html lang="en">');
+      expect(html).toContain('name="viewport"');
+      expect(html).toContain('ORDER STATUS UPDATE');
+      expect(html).toContain(status);
+      const headings = {
+        Pending: 'Order received.',
+        Preparing: 'Your order is being prepared.',
+        'Out for delivery': 'Your order is out for delivery.',
+        Delivered: 'Your order has been delivered.',
+        Cancelled: 'Your order has been cancelled.',
+      };
+      expect(html).toContain(headings[status]);
+      expect(text).toContain(`order #42 is now ${status}`);
+      if (status === 'Cancelled') expect(html).not.toContain('ORDER PROGRESS');
+    },
+  );
 
   it('handles SMTP failures and missing settings without leaking errors', async () => {
     const mock = transport();

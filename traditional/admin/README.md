@@ -17,9 +17,11 @@ Uploaded images go in the project's `uploads/` directory, which must be writable
 Notifications use PHPMailer with Gmail SMTP (`smtp.gmail.com`, port 587, STARTTLS). The sender and SMTP username are `oswin9089@gmail.com`. Recipients come from the customer attached to each order (`orders.user_id` → `users.email`).
 
 Customer checkout uses the same SMTP settings to send an automatic order confirmation after the database transaction
-commits. The plain-text receipt includes the order number, Pending status, dishes, quantities, saved prices, total,
+commits. The HTML receipt includes the order number, Pending status, dishes, quantities, saved prices, total,
 payment method, delivery address, phone, and optional kitchen notes. Email failures never undo a placed order or restore
 its cart. The customer sees whether the confirmation email could be sent on the redirected orders page.
+Confirmation and status emails share the same FoodHub HTML design and retain a plain-text alternative.
+The layout uses inline styles and tables, adjusts for narrow screens, and escapes customer-entered content.
 
 1. Run `composer install` after cloning the project.
 2. Enable 2-Step Verification on the sender's Google account and create an App Password at https://myaccount.google.com/apppasswords.
