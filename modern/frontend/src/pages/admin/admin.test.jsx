@@ -133,7 +133,7 @@ describe('React administration', () => {
     expect(calls.some((call) => call.url.startsWith('/api/admin'))).toBe(false);
   });
 
-  it('sends an admin login directly to order management', async () => {
+  it('sends an admin login directly to the dashboard', async () => {
     signedIn = false;
     await renderApp('/login');
     await userEvent.type(screen.getByLabelText('Email', { selector: '#login-email' }), admin.email);
@@ -142,8 +142,8 @@ describe('React administration', () => {
       'Password123',
     );
     await userEvent.click(screen.getByRole('button', { name: 'Log in' }));
-    expect(await screen.findByRole('heading', { name: 'Manage orders' })).toBeInTheDocument();
-    expect(where(screen)).toBe('/admin/orders');
+    expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
+    expect(where(screen)).toBe('/admin/dashboard');
   });
 
   it('paginates five dishes at a time and supports search, category and visibility filters', async () => {
@@ -355,5 +355,89 @@ describe('React administration', () => {
     expect(
       within(screen.getByRole('region', { name: 'Dishes' })).getByText('Newer saved dish'),
     ).toBeInTheDocument();
+  });
+});
+
+describe('Admin dashboard', () => {
+  const metric = (name) => within(screen.getByRole('heading', { name }).closest('article, a'));
+
+  it('opens the dashboard from /admin with real API summaries and useful management links', async () => {
+    await renderApp('/admin');
+    await screen.findByRole('region', { name: 'Store summary' });
+    expect(where(screen)).toBe('/admin/dashboard');
+    expect(metric('Total Revenue').getByText('$17.00')).toBeInTheDocument();
+    expect(metric('Total Orders').getByText('2')).toBeInTheDocument();
+    expect(metric('Total Products').getByText('6')).toBeInTheDocument();
+    expect(metric('Pending Orders').getByText('1')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Sales Overview' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Orders by Status' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Sales by Category' })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(document.querySelector('.recharts-area-area')).not.toBeNull();
+      expect(document.querySelector('.recharts-pie-sector')).not.toBeNull();
+      expect(document.querySelector('.recharts-bar-rectangle')).not.toBeNull();
+    });
+    expect(screen.getByRole('link', { name: /^Pending Orders/ })).toHaveAttribute(
+      'href',
+      '/admin/orders?status=Pending',
+    );
+    expect(screen.getByRole('link', { name: '#12' })).toHaveAttribute(
+      'href',
+      '/admin/orders?status=all&id=12',
+    );
+    expect(document.title).toBe('FoodHub | Dashboard');
+  });
+
+  it('changes the sales window without silently filtering the all-time summary cards', async () => {
+    await renderApp('/admin/dashboard');
+    const sales = within(await screen.findByRole('region', { name: 'Sales Overview' }));
+    await userEvent.click(sales.getByRole('button', { name: '7 days' }));
+    expect(sales.getByRole('button', { name: '7 days' })).toHaveAttribute('aria-pressed', 'true');
+    await userEvent.click(sales.getByText('View chart data'));
+    expect(within(sales.getByRole('table')).getAllByRole('row')).toHaveLength(8);
+    expect(metric('Total Revenue').getByText('$17.00')).toBeInTheDocument();
+    await userEvent.click(sales.getByRole('button', { name: '90 days' }));
+    expect(within(sales.getByRole('table')).getAllByRole('row')).toHaveLength(91);
+  });
+
+  it('refreshes from the existing admin APIs and preserves the last successful values on failure', async () => {
+    await renderApp('/admin/dashboard');
+    await screen.findByRole('region', { name: 'Store summary' });
+    orders[1].status = 'Cancelled';
+    menu.push({ ...menu[0], id: 7, name: 'Extra dish', available: false });
+    await userEvent.click(screen.getByRole('button', { name: 'Refresh data' }));
+    await waitFor(() => expect(metric('Total Revenue').getByText('$11.00')).toBeInTheDocument());
+    expect(metric('Total Products').getByText('7')).toBeInTheDocument();
+    failRefresh = true;
+    await userEvent.click(screen.getByRole('button', { name: 'Refresh data' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not refresh admin data.');
+    expect(metric('Total Revenue').getByText('$11.00')).toBeInTheDocument();
+  });
+
+  it('shows genuine empty data separately from an unavailable backend', async () => {
+    menu = [];
+    orders = [];
+    await renderApp('/admin/dashboard');
+    await screen.findByRole('region', { name: 'Store summary' });
+    expect(metric('Total Revenue').getByText('$0.00')).toBeInTheDocument();
+    expect(metric('Total Orders').getByText('0')).toBeInTheDocument();
+    expect(screen.getByText('No category sales yet.')).toBeInTheDocument();
+  });
+
+  it('does not turn an initial fetch error into zero statistics, and supports retry', async () => {
+    failRefresh = true;
+    await renderApp('/admin/dashboard');
+    expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Store summary' })).toBeNull();
+    failRefresh = false;
+    await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByRole('region', { name: 'Store summary' })).toBeInTheDocument();
+  });
+
+  it('keeps the new dashboard behind the existing admin access guard', async () => {
+    signedIn = false;
+    renderAppRaw('/admin/dashboard');
+    await waitFor(() => expect(where(screen)).toBe('/login'));
+    expect(calls.some((call) => call.url.startsWith('/api/admin'))).toBe(false);
   });
 });

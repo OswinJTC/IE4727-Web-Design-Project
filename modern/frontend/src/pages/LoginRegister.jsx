@@ -41,7 +41,7 @@ function LoginForm() {
     setSubmitting(false);
     if (res.ok) {
       toast.success('Welcome back! You are logged in.');
-      return navigate(res.user?.role === 'admin' ? '/admin/orders' : '/');
+      return navigate(res.user?.role === 'admin' ? '/admin/dashboard' : '/');
     }
     setErrors(res.errors ?? { form: res.error }); // same message whether the email or the password was wrong
     toast.error(res.error ?? 'Could not log in. Check the form and try again.');

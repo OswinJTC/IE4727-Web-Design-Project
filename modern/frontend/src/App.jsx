@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from "react-router-dom";
+import { lazy, Suspense } from "react";
 import ManageMenu from './pages/admin/ManageMenu';
 import AdminLayout, { ManageOrders } from './pages/admin/Admin';
 import Home from "./pages/Home";
@@ -11,8 +12,10 @@ import LoginRegister from "./pages/LoginRegister";
 import RegisterSuccess from "./pages/RegisterSuccess";
 import Shell from "./components/Shell";
 import { Link } from "react-router-dom";
-import { useShop } from "./context/ShopContext";
-import { backLink, container, loading } from "./lib/ui";
+import { backLink, container } from "./lib/ui";
+
+// Keep the chart library out of the customer storefront's initial bundle.
+const Dashboard = lazy(() => import('./pages/admin/Dashboard'));
 
 function NotFound() {
     return (
@@ -44,8 +47,15 @@ export default function App() {
             <Route path="/login" element={<LoginRegister />} />
             <Route path="/register-success" element={<RegisterSuccess />} />
             <Route path="/admin" element={<AdminLayout />}>
-                <Route index element={<Navigate to="orders" replace />} />
-                <Route path="dashboard" element={<Navigate to="/admin/orders" replace />} />
+                <Route index element={<Navigate to="dashboard" replace />} />
+                <Route
+                    path="dashboard"
+                    element={
+                        <Suspense fallback={<p role="status">Loading dashboard…</p>}>
+                            <Dashboard />
+                        </Suspense>
+                    }
+                />
                 <Route path="menu" element={<ManageMenu />} />
                 <Route path="orders" element={<ManageOrders />} />
             </Route>

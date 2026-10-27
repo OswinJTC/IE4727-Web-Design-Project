@@ -26,7 +26,7 @@ export const initials = (name) =>
     .toUpperCase();
 export const payments = { cash: 'Cash', card: 'Card', paynow: 'PayNow' };
 
-// Shared admin UI and state live here so the two screens use the same session and data.
+// Shared admin UI and state keep all admin screens on the same session and data.
 const AdminContext = createContext(null);
 export function useAdmin() {
   const context = useContext(AdminContext);
@@ -36,6 +36,14 @@ export function useAdmin() {
 
 export function AdminIcon({ name }) {
   const paths = {
+    dashboard: (
+      <>
+        <rect x="3" y="3" width="7" height="7" rx="1" />
+        <rect x="14" y="3" width="7" height="7" rx="1" />
+        <rect x="3" y="14" width="7" height="7" rx="1" />
+        <rect x="14" y="14" width="7" height="7" rx="1" />
+      </>
+    ),
     orders: (
       <>
         <rect x="5" y="3" width="14" height="18" rx="2" />
@@ -123,11 +131,18 @@ function AdminWorkspace() {
   const [error, setError] = useState('');
   const [forbidden, setForbidden] = useState(false);
   const [notice, setNotice] = useState('');
+  const [dataReady, setDataReady] = useState(false);
+  const [refreshedAt, setRefreshedAt] = useState(null);
   // Ignore older reads after a newer refresh, a confirmed write, or unmounting.
   const requestVersion = useRef(0);
 
   useEffect(() => {
-    document.title = `FoodHub | ${pathname.includes('/menu') ? 'Manage menu' : 'Manage orders'}`;
+    const title = pathname.includes('/menu')
+      ? 'Manage menu'
+      : pathname.includes('/orders')
+        ? 'Manage orders'
+        : 'Dashboard';
+    document.title = `FoodHub | ${title}`;
   }, [pathname]);
 
   const handleError = useCallback(
@@ -149,6 +164,8 @@ function AdminWorkspace() {
       if (version !== requestVersion.current) return;
       setMenu(nextMenu);
       setOrders(nextOrders);
+      setDataReady(true);
+      setRefreshedAt(new Date().toISOString());
       return { menu: nextMenu, orders: nextOrders };
     } catch (err) {
       if (version !== requestVersion.current) return;
@@ -206,17 +223,24 @@ function AdminWorkspace() {
         updateDish,
         removeDish,
         updateOrder,
+        dataReady,
+        refreshedAt,
+        error,
       }}
     >
       <div className="admin-body admin-layout">
         <aside className="admin-sidebar">
-          <Link className="admin-brand" to="/admin/orders">
+          <Link className="admin-brand" to="/admin/dashboard">
             <span className="logo">
               <LogoIcon />
             </span>
             FoodHub <span className="admin-tag">ADMIN</span>
           </Link>
           <nav className="admin-nav" aria-label="Administration">
+            <NavLink to="/admin/dashboard" className={({ isActive }) => (isActive ? 'active' : '')}>
+              <AdminIcon name="dashboard" />
+              Dashboard
+            </NavLink>
             <NavLink to="/admin/menu" className={({ isActive }) => (isActive ? 'active' : '')}>
               <LogoIcon />
               Manage menu

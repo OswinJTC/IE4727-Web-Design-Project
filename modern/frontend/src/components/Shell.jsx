@@ -24,7 +24,7 @@ function AuthArea() {
     <>
       <span data-testid="avatar" className="grid size-[42px] shrink-0 place-items-center rounded-full bg-sun text-[15px] font-black">{user.name.charAt(0).toUpperCase()}</span>
       <span className="font-black whitespace-nowrap">Welcome, {user.name}</span>
-      {user.role === 'admin' && <Link className={`${btnLight} whitespace-nowrap`} to="/admin/orders">Admin</Link>}
+      {user.role === 'admin' && <Link className={`${btnLight} whitespace-nowrap`} to="/admin/dashboard">Admin</Link>}
       <button type="button" className={`${btnLight} whitespace-nowrap`} onClick={() => { navigate('/'); logout(); toast.info('You have been logged out.'); }}>Log out</button>
     </>
   );

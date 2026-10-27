@@ -27,13 +27,14 @@ Sample logins: `aisha@example.com` / `Password123` (customer), `admin@foodhub.te
 
 ## React administration
 
-The admin screens and routes live in four files: `src/routes/admin.js` in the backend, and
-`src/pages/admin/ManageMenu.jsx`, `Admin.jsx`, and `admin.css` in the frontend.
-The Admin module contains the shared admin layout, UI helpers, and order management screen.
+Admin routes live in `src/routes/admin.js` in the backend. In the frontend, `src/pages/admin/Admin.jsx`
+contains the shared admin layout, helpers, and order management screen; `ManageMenu.jsx` manages dishes,
+and `Dashboard.jsx` contains the dashboard and its reusable summary/chart components.
+The dashboard uses Tailwind utility classes alongside the existing admin styles in `admin.css`.
 `src/mailer.js` is shared by admin status emails and customer checkout confirmations.
 
-Log in at `http://localhost:5173/login` as `admin@foodhub.test` / `Password123`. Admins land on `/admin/orders`;
-`/admin/menu` manages dishes. `/admin` and `/admin/dashboard` also open order management, matching the traditional app.
+Log in at `http://localhost:5173/login` as `admin@foodhub.test` / `Password123`. Admins land on `/admin/dashboard`;
+`/admin/menu` manages dishes and `/admin/orders` manages orders. `/admin` redirects to the dashboard.
 The storefront header has an Admin link for administrators.
 
 - Menu: search, category/visibility filters, five dishes per page, add/edit, JPG/PNG uploads up to 2 MB, visibility switches,
@@ -48,6 +49,27 @@ Admin API: `GET /api/admin/menu`, `POST /api/admin/menu`, `PUT /api/admin/menu/:
 `PATCH /api/admin/menu/:id/visibility` (`{available: boolean}`), `DELETE /api/admin/menu/:id`,
 `GET /api/admin/orders`, and `PATCH /api/admin/orders/:id/status` (`{status: string}`). Dish creation/editing accepts
 multipart fields `name`, `category`, `price`, `description`, `available` and an optional `photo` file.
+
+### Admin Dashboard — Section 6 modern enhancement
+
+The React-only dashboard reuses authenticated `GET /api/admin/menu` and `GET /api/admin/orders` data from Supabase.
+No analytics tables, seed values, or extra backend endpoints are required. Summary values and chart series are derived
+in the browser with memoized calculations, and Refresh data reloads the two existing APIs.
+
+- Total Revenue is all-time **non-cancelled order value**, rather than collected payments (payment collection is not tracked).
+- Total Orders includes every status. Total Products is the current catalog, including hidden dishes. Pending Orders counts the current Pending status.
+- Sales Overview shows the last 7, 30, or 90 calendar days including today in **Asia/Singapore**, with zero-filled days.
+  Its local period selector affects this chart only; the all-time cards and other charts retain their clearly labelled scope.
+- Orders by Status includes every order. Sales by Category excludes cancellations and multiplies saved line-item unit prices
+  by quantities. Categories follow the current menu classification; the database does not store historical category snapshots.
+- Recent orders link to their existing management screen. Data errors are distinct from genuine zero/empty results;
+  a failed refresh preserves the last successful values and displays a retry message.
+
+For Section 6 of the report, this demonstrates a React single-page admin experience, API-backed analytics, reusable
+components, state-driven filtering and refresh, interactive Recharts visualizations with tooltips and accessible data tables,
+and responsive Tailwind layouts. The dashboard/chart library is lazy-loaded separately from the customer storefront.
+The traditional version is unchanged. Run frontend `npm test` to check metric arithmetic, timezone boundaries, routing,
+access control, filters, refresh failure, empty states, and the existing admin/customer flows.
 
 ### Order email notifications
 
