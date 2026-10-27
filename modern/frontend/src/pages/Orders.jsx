@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import Shell from '../components/Shell';
@@ -35,6 +35,7 @@ export default function Orders() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const [cancelling, setCancelling] = useState(false);
+  const cancellationLock = useRef(false);
   if (!ready) return <Shell title="My orders" active="orders"><main className={container} /></Shell>;
   if (!user) return <Navigate to="/login" replace />; // orders belong to a logged-in user
   if (!ordersReady) return <Shell title="My orders" active="orders"><main className={container}><p className={loading} role="status">Loading orders…</p></main></Shell>;
@@ -58,13 +59,23 @@ export default function Orders() {
   };
 
   const cancel = async () => {
+    if (cancellationLock.current) return;
     // Cancelling cannot be undone, so ask first
     if (!window.confirm('Cancel this order? This cannot be undone.')) return;
+    cancellationLock.current = true;
     setCancelling(true);
-    const ok = await cancelOrder(selected.id);
-    setCancelling(false);
-    if (ok) toast.success(`Order #${selected.id} cancelled.`);
-    else toast.error('This order can no longer be cancelled.');
+    try {
+      const result = await cancelOrder(selected.id);
+      if (!result.ok) toast.error('This order can no longer be cancelled.');
+      else if (result.cancellationEmail === 'accepted') {
+        toast.success(`Order #${selected.id} cancelled. Your cancellation email is on its way.`);
+      } else if (result.cancellationEmail) {
+        toast.warn(`Order #${selected.id} cancelled. We couldn't send the cancellation email.`);
+      } else toast.success(`Order #${selected.id} cancelled.`);
+    } finally {
+      cancellationLock.current = false;
+      setCancelling(false);
+    }
   };
 
   return (

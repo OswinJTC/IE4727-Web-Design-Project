@@ -167,20 +167,19 @@ export function ShopProvider({ children }) {
       return { ok: true, orderId, confirmationEmail };
     },
 
-    // Returns true when the order was cancelled, false when the server refused (already being prepared, not yours)
+    // Cancellation success is independent of email delivery and reloading the order list.
     async cancelOrder(orderId) {
-      let ok = true;
+      let result;
       try {
-        await api.cancelOrder(orderId);
+        result = await api.cancelOrder(orderId);
       } catch (err) {
-        if (err.status === 401) {
-          sessionEnded();
-          return false;
-        }
-        ok = false;
+        if (err.status === 401) sessionEnded();
+        await refreshOrders().catch(() => {});
+        return { ok: false };
       }
+      setOrders((previous) => previous.map((order) => order.id === orderId ? { ...order, status: 'Cancelled' } : order));
       await refreshOrders().catch(() => {});
-      return ok;
+      return { ok: true, cancellationEmail: result.cancellationEmail };
     },
   }), [ready, loadError, user, dishes, dishesReady, dishesError, loadDishes, summary, orders, ordersReady, refreshOrders, sessionEnded]);
 

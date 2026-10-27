@@ -33,7 +33,7 @@ export function createApp({
   app.use('/api/dishes', dishesRouter(pool));
   app.use('/api/auth', authRouter(pool));
   app.use('/api/cart', cartRouter(pool));
-  app.use('/api/orders', ordersRouter(pool, { sendConfirmationEmail }));
+  app.use('/api/orders', ordersRouter(pool, { sendConfirmationEmail, sendStatusEmail }));
   app.use('/api/admin', adminRouter(pool, { sendStatusEmail, uploads }));
   app.use('/api/uploads', express.static(uploads, { dotfiles: 'deny', index: false }));
 

@@ -122,3 +122,31 @@ describe('checkout email feedback', () => {
     } finally { notify.mockRestore(); }
   });
 });
+
+describe('customer cancellation email feedback', () => {
+  it.each(['accepted', 'failed', 'unconfigured', 'refresh-failed'])('keeps cancellation successful when email is %s', async (state) => {
+    api.login(AISHA, 'Password123');
+    const { orderId } = api.placeOrder(1, { address: '1 Test Street', phone: '91234567', payment: 'cash', notes: '' }, { 3: 1 });
+    const originalFetch = globalThis.fetch;
+    const email = state === 'refresh-failed' ? 'accepted' : state;
+    vi.stubGlobal('fetch', async (url, options = {}) => {
+      const response = await originalFetch(url, options);
+      if (url !== `/api/orders/${orderId}/cancel` || !response.ok) return response;
+      return new Response(JSON.stringify({ ...await response.json(), cancellationEmail: email }), {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      });
+    });
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const notify = vi.spyOn(toast, email === 'accepted' ? 'success' : 'warn').mockImplementation(() => {});
+    try {
+      await renderApp(`/orders?id=${orderId}`);
+      if (state === 'refresh-failed') fakeBackend.failOn = (method, path) => method === 'GET' && path === '/orders';
+      await userEvent.click(screen.getByRole('button', { name: 'Cancel order' }));
+      await waitFor(() => expect(notify).toHaveBeenCalledWith(expect.stringContaining(
+        email === 'accepted' ? 'cancellation email is on its way' : "couldn't send the cancellation email",
+      )));
+      expect(await screen.findByText(/This order was cancelled on/)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Cancel order' })).toBeNull();
+    } finally { confirm.mockRestore(); notify.mockRestore(); }
+  });
+});

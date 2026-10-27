@@ -1,5 +1,6 @@
 <?php
 require __DIR__ . '/includes/cart.php';
+require __DIR__ . '/includes/mailer.php';
 
 if (!isset($_SESSION['user_id'])) {
     header('Location: login_register.php');              // orders belong to a logged-in user
@@ -8,14 +9,37 @@ if (!isset($_SESSION['user_id'])) {
 
 $checkoutNotice = $_SESSION['checkout_notice'] ?? null;
 unset($_SESSION['checkout_notice']);
+$orderNotice = $_SESSION['order_notice'] ?? '';
+unset($_SESSION['order_notice']);
 
 // Cancel a pending order. The WHERE clause is the whole rule: it must be this user's order
 // and still Pending, so other people's orders and orders already being prepared are untouched.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'cancel_order') {
     $cancelId = filter_var($_POST['order_id'] ?? '', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
     if ($cancelId !== false) {
-        $stmt = db()->prepare("UPDATE orders SET status = 'Cancelled' WHERE order_id = ? AND user_id = ? AND status = 'Pending'");
-        $stmt->execute([$cancelId, $_SESSION['user_id']]);
+        try {
+            $stmt = db()->prepare('SELECT email FROM users WHERE user_id = ?');
+            $stmt->execute([$_SESSION['user_id']]);
+            $email = $stmt->get_result()->fetch_assoc()['email'] ?? '';
+            $stmt = db()->prepare("UPDATE orders SET status = 'Cancelled' WHERE order_id = ? AND user_id = ? AND status = 'Pending'");
+            $stmt->execute([$cancelId, $_SESSION['user_id']]);
+            if ($stmt->affected_rows === 1) {
+                // Autocommit has saved the cancellation; SMTP failure must never undo it.
+                try {
+                    $sent = email_order_status($email, $cancelId, 'Cancelled');
+                } catch (Throwable $ex) {
+                    $sent = false;
+                    error_log('FoodHub: cancellation email failed for order #' . $cancelId . '.');
+                }
+                $_SESSION['order_notice'] = 'Order #' . $cancelId . ' cancelled. '
+                    . ($sent ? 'Your cancellation email is on its way.' : "We couldn't send the cancellation email. Your order is cancelled.");
+            } else {
+                $_SESSION['order_notice'] = 'This order can no longer be cancelled.';
+            }
+        } catch (mysqli_sql_exception $ex) {
+            error_log('FoodHub: order cancellation failed.');
+            $_SESSION['order_notice'] = 'We could not cancel your order. Please try again.';
+        }
         header('Location: orders.php?id=' . $cancelId);   // Post/Redirect/Get, showing the order's new status
         exit;
     }
@@ -99,6 +123,9 @@ $summary     = cart_summary();                           // for the cart badge
       <?php require __DIR__ . '/includes/auth_nav.php'; ?>
     </header>
     <main class="container">
+      <?php if ($orderNotice !== ''): ?>
+      <div class="checkout-notice" role="status"><?= e($orderNotice) ?></div>
+      <?php endif; ?>
       <?php if ($checkoutNotice): ?>
       <div class="checkout-notice" role="status">Order #<?= (int) $checkoutNotice['order_id'] ?> placed.
         <?= $checkoutNotice['email_sent'] ? 'Your confirmation email is on its way.' : "We couldn't send the confirmation email. Your order is saved." ?>

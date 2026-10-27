@@ -22,6 +22,9 @@ payment method, delivery address, phone, and optional kitchen notes. Email failu
 its cart. The customer sees whether the confirmation email could be sent on the redirected orders page.
 Confirmation and status emails share the same FoodHub HTML design and retain a plain-text alternative.
 The layout uses inline styles and tables, adjusts for narrow screens, and escapes customer-entered content.
+The customer's Cancel order button also sends this HTML Cancelled notification after successfully changing their own
+Pending order. Repeated or rejected cancellations send nothing. Email failure keeps the cancellation saved and shows
+the customer a clear message on the orders page.
 
 1. Run `composer install` after cloning the project.
 2. Enable 2-Step Verification on the sender's Google account and create an App Password at https://myaccount.google.com/apppasswords.

@@ -70,6 +70,11 @@ and optional kitchen notes. The order and its lines are committed and the cart c
 `unconfigured`. Email failure still returns 201 and the frontend confirms that the order was placed.
 Invalid checkout, transaction rollback, repeated submission with an emptied cart, and refreshing the orders page do not send confirmations.
 
+When a customer cancels their own Pending order, the saved cancellation also sends the shared Cancelled status email.
+`POST /api/orders/:id/cancel` returns `{ ok: true, cancellationEmail }`, using the same email states as checkout.
+Cancellation succeeds even if email fails. Repeated requests, other customers' orders, and non-Pending orders never
+trigger an email; only the atomic status change can send one. The customer sees the cancellation and email result.
+
 ## API
 
 | Method + path | Login | What it does |

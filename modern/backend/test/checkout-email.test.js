@@ -7,6 +7,7 @@ import { createIsolatedTestDb, loginAgent, resetTestDb } from './helpers.js';
 
 let pool, cleanup, app, dishId;
 const sendConfirmationEmail = vi.fn();
+const sendStatusEmail = vi.fn();
 const details = {
   address: ' 1 Test Street ',
   phone: '9123 4567',
@@ -18,12 +19,13 @@ beforeAll(async () => {
   const url = process.env.INTEGRATION_DATABASE_URL ?? process.env.ADMIN_TEST_DATABASE_URL;
   if (url) ({ pool, cleanup } = await createIsolatedTestDb(url));
   else pool = await resetTestDb();
-  app = createApp({ pool, sessionSecret: 'checkout-test', sendConfirmationEmail });
+  app = createApp({ pool, sessionSecret: 'checkout-test', sendConfirmationEmail, sendStatusEmail });
   dishId = (await pool.query("SELECT item_id FROM menu_items WHERE name = 'Curry laksa'")).rows[0]
     .item_id;
 });
 beforeEach(() => {
   sendConfirmationEmail.mockReset().mockResolvedValue({ state: 'accepted' });
+  sendStatusEmail.mockReset().mockResolvedValue({ state: 'accepted' });
 });
 afterEach(() => {
   vi.restoreAllMocks();
@@ -145,6 +147,77 @@ describe('checkout confirmation emails', () => {
     expect((await customer.get('/api/cart')).body.items).toBe(2);
     expect(sendConfirmationEmail).not.toHaveBeenCalled();
   });
+});
+
+describe('customer cancellation emails', () => {
+  async function placedOrder() {
+    const customer = await customerWithCart();
+    const { body } = await customer.post('/api/orders').send(details).expect(201);
+    return { customer, id: body.orderId };
+  }
+
+  it('emails the owner only after the cancellation is saved', async () => {
+    const { customer, id } = await placedOrder();
+    sendStatusEmail.mockImplementation(async ({ orderId }) => {
+      expect(
+        (await pool.query('SELECT status FROM orders WHERE order_id = $1', [orderId])).rows[0]
+          .status,
+      ).toBe('Cancelled');
+      return { state: 'accepted' };
+    });
+    await customer
+      .post(`/api/orders/${id}/cancel`)
+      .send({ email: 'attacker@example.com' })
+      .expect(200, { ok: true, cancellationEmail: 'accepted' });
+    expect(sendStatusEmail).toHaveBeenCalledWith({
+      email: 'aisha@example.com',
+      orderId: id,
+      status: 'Cancelled',
+    });
+  });
+
+  it('sends only one notification for concurrent or repeated cancellation requests', async () => {
+    const { customer, id } = await placedOrder();
+    const results = await Promise.all([
+      customer.post(`/api/orders/${id}/cancel`),
+      customer.post(`/api/orders/${id}/cancel`),
+    ]);
+    expect(results.map((result) => result.status).sort()).toEqual([200, 409]);
+    await customer.post(`/api/orders/${id}/cancel`).expect(409);
+    await customer.get('/api/orders').expect(200);
+    expect(sendStatusEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not notify when a guest, another customer, or a non-Pending order is rejected', async () => {
+    const { customer, id } = await placedOrder();
+    await request(app).post(`/api/orders/${id}/cancel`).expect(401);
+    const other = await loginAgent(app, 'daniel@example.com');
+    await other.post(`/api/orders/${id}/cancel`).expect(409);
+    await pool.query("UPDATE orders SET status = 'Preparing' WHERE order_id = $1", [id]);
+    await customer.post(`/api/orders/${id}/cancel`).expect(409);
+    await customer.post('/api/orders/invalid/cancel').expect(404);
+    expect(sendStatusEmail).not.toHaveBeenCalled();
+    expect(
+      (await pool.query('SELECT status FROM orders WHERE order_id = $1', [id])).rows[0].status,
+    ).toBe('Preparing');
+  });
+
+  it.each(['failed', 'unconfigured', 'throws'])(
+    'keeps cancellation successful when email is %s',
+    async (state) => {
+      const { customer, id } = await placedOrder();
+      if (state === 'throws') sendStatusEmail.mockRejectedValueOnce(new Error('SMTP offline'));
+      else sendStatusEmail.mockResolvedValueOnce({ state });
+      await customer
+        .post(`/api/orders/${id}/cancel`)
+        .expect(200, { ok: true, cancellationEmail: state === 'throws' ? 'failed' : state });
+      expect(
+        (await pool.query('SELECT status FROM orders WHERE order_id = $1', [id])).rows[0].status,
+      ).toBe('Cancelled');
+      await customer.post(`/api/orders/${id}/cancel`).expect(409);
+      expect(sendStatusEmail).toHaveBeenCalledTimes(1);
+    },
+  );
 });
 
 describe('shared SMTP transport and receipt content', () => {

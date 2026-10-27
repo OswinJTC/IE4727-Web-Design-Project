@@ -169,7 +169,7 @@ describe('POST /api/orders/:id/cancel', () => {
   it('cancels your own Pending order once', async () => {
     const agent = await loginAgent(app, 'aisha@example.com');
     const id = await place(agent);
-    await agent.post(`/api/orders/${id}/cancel`).expect(200, { ok: true });
+    await agent.post(`/api/orders/${id}/cancel`).expect(200, { ok: true, cancellationEmail: 'unconfigured' });
     expect(await statusOf(id)).toBe('Cancelled');
     await agent.post(`/api/orders/${id}/cancel`).expect(409);
   });

@@ -4,6 +4,7 @@ Run: python3 traditional/script/test_checkout_email.py (XAMPP MySQL must be runn
 No real emails are sent and the existing foodhub database is never changed.
 """
 import http.cookiejar
+from html import unescape
 import json
 import os
 from pathlib import Path
@@ -179,7 +180,7 @@ def main():
             sql(f"UPDATE {DATABASE}.users SET full_name = 'Aisha & <b>Lim</b>' WHERE email = 'aisha@example.com'")
             request('/login_register.php', {'action': 'login', 'email': 'aisha@example.com', 'password': 'Password123'})
             request(add)
-            request('/checkout.php', {**details, 'address': '1 <Test> Street', 'notes': '<script>alert(1)</script>'})
+            url, _ = request('/checkout.php', {**details, 'address': '1 <Test> Street', 'notes': '<script>alert(1)</script>'})
             receipt = messages()[-1]
             assert 'Aisha &amp; &lt;b&gt;Lim&lt;/b&gt;' in receipt['body']
             assert '1 &lt;Test&gt; Street' in receipt['body']
@@ -187,6 +188,42 @@ def main():
             assert '<script>' in receipt['text']
             print('PASS: HTML escapes customer content and keeps the plain-text receipt intact.')
 
+            cancel_id = int(urllib.parse.parse_qs(urllib.parse.urlsplit(url).query)['id'][0])
+            mail_count = len(messages())
+            _, page = request('/orders.php', {'action': 'cancel_order', 'order_id': cancel_id, 'email': 'attacker@example.com'})
+            assert 'Your cancellation email is on its way.' in page
+            assert len(messages()) == mail_count + 1
+            assert messages()[-1]['to'] == 'aisha@example.com'
+            assert messages()[-1]['order']['status'] == 'Cancelled'
+            assert 'Your order has been cancelled.' in messages()[-1]['body']
+            request('/orders.php', {'action': 'cancel_order', 'order_id': cancel_id})
+            request('/orders.php')
+            assert len(messages()) == mail_count + 1
+            print('PASS: customer cancellation sends one HTML email after saving; repeats and refresh do not resend.')
+
+            request(add)
+            url, _ = request('/checkout.php', details)
+            cancel_id = int(urllib.parse.parse_qs(urllib.parse.urlsplit(url).query)['id'][0])
+            mail_count = len(messages())
+            request('/login_register.php', {'action': 'login', 'email': 'daniel@example.com', 'password': 'Password123'})
+            request('/orders.php', {'action': 'cancel_order', 'order_id': cancel_id})
+            assert len(messages()) == mail_count
+            assert sql(f'SELECT status FROM {DATABASE}.orders WHERE order_id = {cancel_id}') == 'Pending'
+            request('/login_register.php', {'action': 'login', 'email': 'aisha@example.com', 'password': 'Password123'})
+            sql(f"UPDATE {DATABASE}.orders SET status = 'Preparing' WHERE order_id = {cancel_id}")
+            request('/orders.php', {'action': 'cancel_order', 'order_id': cancel_id})
+            assert len(messages()) == mail_count
+            print('PASS: rejected cancellation attempts do not send mail or change another customer’s order.')
+
+            sql(f"UPDATE {DATABASE}.orders SET status = 'Pending' WHERE order_id = {cancel_id}")
+            fail_mail.touch()
+            _, page = request('/orders.php', {'action': 'cancel_order', 'order_id': cancel_id})
+            assert "couldn't send the cancellation email" in unescape(page)
+            assert sql(f'SELECT status FROM {DATABASE}.orders WHERE order_id = {cancel_id}') == 'Cancelled'
+            assert len(messages()) == mail_count + 1
+            request('/orders.php', {'action': 'cancel_order', 'order_id': cancel_id})
+            assert len(messages()) == mail_count + 1
+            print('PASS: cancellation remains saved when SMTP fails, with no duplicate retry email.')
     finally:
         if server is not None:
             server.terminate()

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { requireLogin } from '../auth.js';
 import { cartSummary } from '../cartView.js';
 import { parseId, wrap } from '../http.js';
-import { sendOrderConfirmationEmail } from '../mailer.js';
+import { sendOrderConfirmationEmail, sendOrderStatusEmail } from '../mailer.js';
 import {
   isString,
   normalizePhone,
@@ -14,7 +14,13 @@ import {
 const PAYMENTS = ['cash', 'card', 'paynow'];
 const iso = (d) => new Date(d).toISOString();
 
-export function ordersRouter(pool, { sendConfirmationEmail = sendOrderConfirmationEmail } = {}) {
+export function ordersRouter(
+  pool,
+  {
+    sendConfirmationEmail = sendOrderConfirmationEmail,
+    sendStatusEmail = sendOrderStatusEmail,
+  } = {},
+) {
   const router = Router();
   router.use(requireLogin);
 
@@ -160,12 +166,25 @@ export function ordersRouter(pool, { sendConfirmationEmail = sendOrderConfirmati
       const id = parseId(req.params.id);
       if (id === null) return res.status(404).json({ error: 'Not found' });
       const result = await pool.query(
-        "UPDATE orders SET status = 'Cancelled' WHERE order_id = $1 AND user_id = $2 AND status = 'Pending'",
+        `UPDATE orders o SET status = 'Cancelled' FROM users u
+         WHERE o.user_id = u.user_id AND o.order_id = $1 AND o.user_id = $2 AND o.status = 'Pending'
+         RETURNING u.email`,
         [id, req.session.userId],
       );
       if (result.rowCount === 0)
         return res.status(409).json({ error: 'This order can no longer be cancelled.' });
-      return res.json({ ok: true });
+      // Only the request that changed this customer's Pending order sends a notification.
+      let notification;
+      try {
+        notification = await sendStatusEmail({
+          email: result.rows[0].email,
+          orderId: id,
+          status: 'Cancelled',
+        });
+      } catch {
+        notification = { state: 'failed' };
+      }
+      return res.json({ ok: true, cancellationEmail: notification.state });
     }),
   );
 
