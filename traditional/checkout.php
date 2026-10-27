@@ -9,8 +9,12 @@ if (!isset($_SESSION['user_id'])) {
 
 // Order summary: everything comes from the session cart
 $summary = cart_summary();
+$removed = cart_removed_message(cart_take_removed());   // dishes hidden since they were added
 
 $errors  = [];          // field => message, shown under each field
+if ($removed !== '') {
+    $errors['form'] = $removed . ' Please check your order and place it again.';   // also stops the order below
+}
 $payment = 'cash';
 $notes   = '';
 
@@ -44,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'place
     if (strlen($notes) > 255) {
         $errors['notes'] = 'Notes must be 255 characters or fewer.';
     }
-    if (!$summary['lines']) {
+    if (!$summary['lines'] && !isset($errors['form'])) {
         $errors['form'] = 'Your cart is empty.';
     }
 

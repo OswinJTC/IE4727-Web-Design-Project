@@ -36,8 +36,4 @@ The order is saved before sending. The success message identifies the recipient 
 
 Google instructions: https://support.google.com/accounts/answer/185833
 
-To verify checkout and email behavior without changing existing orders or sending real mail, run
-`python3 traditional/script/test_checkout_email.py` from the repository root while XAMPP MySQL is running.
-The check creates and removes its own `foodhub_checkout_test_*` database and captures mail through a fake transport.
-
 To test, place an order with a customer account whose email you can access, then change that order's status. No existing order is changed merely to test configuration.
