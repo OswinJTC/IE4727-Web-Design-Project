@@ -8,8 +8,12 @@ if (!isset($_SESSION['user_id'])) {
 
 // Order summary: everything comes from the session cart
 $summary = cart_summary();
+$removed = cart_removed_message(cart_take_removed());   // dishes hidden since they were added
 
 $errors  = [];          // field => message, shown under each field
+if ($removed !== '') {
+    $errors['form'] = $removed . ' Please check your order and place it again.';   // also stops the order below
+}
 $payment = 'cash';
 $notes   = '';
 
@@ -43,19 +47,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'place
     if (strlen($notes) > 255) {
         $errors['notes'] = 'Notes must be 255 characters or fewer.';
     }
-    if (!$summary['lines']) {
+    if (!$summary['lines'] && !isset($errors['form'])) {
         $errors['form'] = 'Your cart is empty.';
     }
 
     if (!$errors) {
         try {
             // Prices are read from the database again: the session copy may be out of date
-            $stmt  = db()->prepare('SELECT price FROM menu_items WHERE item_id = ?');
+            $stmt  = db()->prepare('SELECT price FROM menu_items WHERE item_id = ? AND is_available = 1');
             $rows  = [];
             $total = 0.0;
             foreach ($summary['lines'] as $line) {
                 $stmt->execute([$line['item_id']]);
-                $price  = (float) ($stmt->get_result()->fetch_row()[0] ?? false);
+                $found  = $stmt->get_result()->fetch_row();
+                if (!$found) {                           // hidden between the page load and now
+                    throw new DomainException('A dish in your cart is no longer available. Please review your cart and try again.');
+                }
+                $price  = (float) $found[0];
                 $rows[] = ['item_id' => $line['item_id'], 'count' => $line['count'], 'price' => $price];
                 $total += $price * $line['count'];
             }
@@ -85,6 +93,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'place
             unset($_SESSION['cart']);                    // the cart is now an order
             header('Location: orders.php?id=' . $orderId);   // Post/Redirect/Get, showing the new order
             exit;
+        } catch (DomainException $ex) {
+            $errors['form'] = $ex->getMessage();         // nothing was saved: the transaction had not started
         } catch (mysqli_sql_exception $ex) {
             db()->rollback();                            // no-op if the transaction never started
             error_log('Place order failed: ' . $ex->getMessage());

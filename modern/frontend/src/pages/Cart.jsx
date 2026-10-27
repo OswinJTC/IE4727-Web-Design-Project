@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import Shell from '../components/Shell';
 import Stepper from '../components/Stepper';
@@ -12,7 +12,7 @@ import { backLink, btn, container } from '../lib/ui';
 const row = 'grid grid-cols-[minmax(0,2.4fr)_1fr_1.4fr_1fr_56px] items-center gap-4 border-b border-line px-[26px] py-5 max-mobile:grid-cols-[1fr_auto] max-mobile:gap-3';
 const qtyBtn = 'h-full text-xl text-ink disabled:cursor-default disabled:text-[#bbb4ad]';
 
-export default function Cart() {
+function CartPage() {
   const { summary, addToCart, decreaseInCart, removeFromCart } = useShop();
   return (
     <Shell title="Your cart">
@@ -50,4 +50,12 @@ export default function Cart() {
       </main>
     </Shell>
   );
+}
+
+// The cart is for logged-in members: guests are sent to the login page once the session is known
+export default function Cart() {
+  const { ready, user } = useShop();
+  if (!ready) return <Shell title="Your cart"><main className={container} /></Shell>;
+  if (!user) return <Navigate to="/login" replace />;
+  return <CartPage />;
 }

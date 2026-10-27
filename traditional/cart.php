@@ -10,6 +10,7 @@ if (!isset($_SESSION['user_id'])) {
 cart_handle_request('cart.php');
 
 $summary = cart_summary();
+$notice  = cart_removed_message(cart_take_removed());   // dishes hidden since they were added
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -29,6 +30,7 @@ $summary = cart_summary();
       <?php require __DIR__ . '/includes/auth_nav.php'; ?>
     </header>
     <main class="container">
+      <?php if ($notice !== ''): ?><p class="error-text" role="alert"><?= e($notice) ?></p><?php endif; ?>
       <div class="page-head"><h1>Your cart</h1><ol class="stepper"><li class="current"><span class="step-dot">1</span>Cart</li><li class=""><span class="step-dot">2</span>Checkout</li><li class=""><span class="step-dot">3</span>Confirmed</li></ol></div>
       <div class="cart-layout">
         <section class="cart-table panel">

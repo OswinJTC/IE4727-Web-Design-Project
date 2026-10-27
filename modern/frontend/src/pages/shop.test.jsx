@@ -188,8 +188,14 @@ describe('Item', () => {
 });
 
 describe('Cart', () => {
-  it('is empty for a guest, with no checkout button', async () => {
+  it('sends a guest to the login page instead of showing the cart', async () => {
     await renderApp('/cart');
+    expect(where(screen)).toBe('/login');
+    expect(screen.queryByText(/Your cart/)).toBeNull();
+  });
+
+  it('shows a member with an empty cart a message and no checkout button', async () => {
+    await renderApp('/cart', { user: AISHA });
     expect(screen.getByText(/Your cart is empty/)).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /Proceed to checkout/ })).toBeNull();
     expect(screen.getByText('Items (0)')).toBeInTheDocument();

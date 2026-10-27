@@ -79,9 +79,47 @@ function cart_handle_request(string $redirect): void
     exit;
 }
 
+// Take dishes the admin has hidden since they were added out of the cart, so a stale cart can never be ordered.
+// Their names are remembered in $_SESSION['cart_removed'] until a page shows them (cart_take_removed).
+function cart_drop_unavailable(): void
+{
+    $ids = array_keys($_SESSION['cart'] ?? []);
+    if (!$ids) {
+        return;
+    }
+    $marks = implode(',', array_fill(0, count($ids), '?'));
+    $stmt  = db()->prepare("SELECT item_id FROM menu_items WHERE is_available = 1 AND item_id IN ($marks)");
+    $stmt->execute($ids);
+    $available = array_map('intval', array_column($stmt->get_result()->fetch_all(MYSQLI_ASSOC), 'item_id'));
+    foreach ($ids as $id) {
+        if (!in_array((int) $id, $available, true)) {
+            $_SESSION['cart_removed'][$id] = $_SESSION['cart'][$id]['name'];
+            unset($_SESSION['cart'][$id]);
+        }
+    }
+}
+
+// Names of dishes removed from the cart since the last notice, and forget them (shown once)
+function cart_take_removed(): array
+{
+    $names = array_values($_SESSION['cart_removed'] ?? []);
+    unset($_SESSION['cart_removed']);
+    return $names;
+}
+
+// Sentence for the notice, or '' when nothing was removed
+function cart_removed_message(array $names): string
+{
+    if (!$names) {
+        return '';
+    }
+    return implode(', ', $names) . (count($names) === 1 ? ' is' : ' are') . ' no longer available and was removed from your cart.';
+}
+
 // Cart lines with subtotals, plus the number of items and the total price.
 function cart_summary(): array
 {
+    cart_drop_unavailable();
     $lines = [];
     $items = 0;
     $total = 0.0;
