@@ -1,15 +1,13 @@
-import { randomUUID } from 'node:crypto';
-import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import pg from 'pg';
 import sharp from 'sharp';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createApp } from '../src/app.js';
-import { resetTestDb, loginAgent } from './helpers.js';
+import { resetTestDb, loginAgent, createIsolatedTestDb } from './helpers.js';
 
-let pool, app, admin, uploads, schema, owner;
+let pool, app, admin, uploads, cleanup;
 const sendStatusEmail = vi.fn(async () => ({ state: 'accepted' }));
 const dish = (extra = {}) => ({
   name: 'Test rice bowl',
@@ -22,32 +20,15 @@ const dish = (extra = {}) => ({
 
 beforeAll(async () => {
   uploads = await mkdtemp(path.join(tmpdir(), 'foodhub-admin-'));
-  // Optional integration mode: create a new, private schema, never touching public or existing data.
-  if (process.env.ADMIN_TEST_DATABASE_URL) {
-    schema = `foodhub_admin_test_${randomUUID().replaceAll('-', '')}`;
-    owner = new pg.Client({ connectionString: process.env.ADMIN_TEST_DATABASE_URL });
-    await owner.connect();
-    await owner.query(`CREATE SCHEMA ${schema}`);
-    pool = new pg.Pool({
-      connectionString: process.env.ADMIN_TEST_DATABASE_URL,
-      options: `-c search_path=${schema}`,
-      max: 4,
-    });
-    pg.types.setTypeParser(1700, parseFloat);
-    for (const name of ['schema.sql', 'seed.sql'])
-      await pool.query(await readFile(new URL(`../sql/${name}`, import.meta.url), 'utf8'));
-  } else {
-    pool = await resetTestDb();
-  }
+  const url = process.env.INTEGRATION_DATABASE_URL ?? process.env.ADMIN_TEST_DATABASE_URL;
+  if (url) ({ pool, cleanup } = await createIsolatedTestDb(url));
+  else pool = await resetTestDb();
   app = createApp({ pool, sessionSecret: 'admin-test', sendStatusEmail, uploads });
   admin = await loginAgent(app, 'admin@foodhub.test');
 });
 afterAll(async () => {
-  await pool?.end();
-  if (owner) {
-    if (schema) await owner.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
-    await owner.end();
-  }
+  if (cleanup) await cleanup();
+  else await pool?.end();
   if (uploads) await rm(uploads, { recursive: true, force: true });
 });
 

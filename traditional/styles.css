@@ -548,6 +548,8 @@ textarea.bad { border-color: #e11d20; background: #fff9f9; }
 .search input::placeholder { color: var(--muted); }
 .search:focus-within { border-color: var(--brand); }
 
+.checkout-notice { padding: 16px 20px; margin-bottom: 24px; border: 1px solid #c3e7ce; border-radius: 12px; background: #e7f5eb; color: #214b2e; font: 14px/1.5 Arial, sans-serif; }
+
 /* Administration: the same PHP pages and design tokens as the storefront. */
 .admin-body { background: #f6f5f3; font-family: Arial, sans-serif; font-size: 13px; }
 .admin-layout { display: flex; min-height: 100vh; }

@@ -9,23 +9,31 @@ import { dishesRouter } from './routes/dishes.js';
 import { adminRouter, uploadDirectory } from './routes/admin.js';
 
 // Builds the Express app around an injected pool, so tests can use a throwaway database
-export function createApp({ pool, sessionSecret, sendStatusEmail, uploads = uploadDirectory }) {
+export function createApp({
+  pool,
+  sessionSecret,
+  sendStatusEmail,
+  sendConfirmationEmail,
+  uploads = uploadDirectory,
+}) {
   const app = express();
   app.disable('x-powered-by');
   app.use(express.json({ limit: '50kb' }));
   app.use(serializeBySession);
-  app.use(session({
-    name: 'foodhub.sid',
-    secret: sessionSecret,
-    resave: false,
-    saveUninitialized: false,
-    cookie: { httpOnly: true, sameSite: 'lax' },
-  }));
+  app.use(
+    session({
+      name: 'foodhub.sid',
+      secret: sessionSecret,
+      resave: false,
+      saveUninitialized: false,
+      cookie: { httpOnly: true, sameSite: 'lax' },
+    }),
+  );
 
   app.use('/api/dishes', dishesRouter(pool));
   app.use('/api/auth', authRouter(pool));
   app.use('/api/cart', cartRouter(pool));
-  app.use('/api/orders', ordersRouter(pool));
+  app.use('/api/orders', ordersRouter(pool, { sendConfirmationEmail }));
   app.use('/api/admin', adminRouter(pool, { sendStatusEmail, uploads }));
   app.use('/api/uploads', express.static(uploads, { dotfiles: 'deny', index: false }));
 

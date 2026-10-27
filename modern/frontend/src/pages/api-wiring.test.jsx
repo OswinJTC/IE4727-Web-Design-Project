@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import { toast } from 'react-toastify';
 import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp, renderAppRaw, AISHA, where } from '../test/utils';
@@ -96,5 +97,28 @@ describe('double submit', () => {
     expect(button).toBeDisabled();
     await waitFor(() => expect(where(screen)).toMatch(/^\/orders\?id=\d+$/));
     expect(api.listOrders(1)).toHaveLength(before + 1);
+  });
+});
+
+describe('checkout email feedback', () => {
+  it.each(['accepted', 'failed', 'unconfigured'])('confirms the saved order when email is %s', async (state) => {
+    const originalFetch = globalThis.fetch;
+    vi.stubGlobal('fetch', async (url, options = {}) => {
+      const response = await originalFetch(url, options);
+      if (url !== '/api/orders' || options.method !== 'POST' || !response.ok) return response;
+      return new Response(JSON.stringify({ ...await response.json(), confirmationEmail: state }), {
+        status: 201, headers: { 'Content-Type': 'application/json' },
+      });
+    });
+    const notify = vi.spyOn(toast, state === 'accepted' ? 'success' : 'warn').mockImplementation(() => {});
+    try {
+      await renderApp('/checkout', { user: AISHA, cart: { 3: 1 } });
+      await userEvent.click(screen.getByRole('button', { name: 'Place order' }));
+      await waitFor(() => expect(where(screen)).toMatch(/^\/orders\?id=\d+$/));
+      expect(notify).toHaveBeenCalledWith(expect.stringContaining(
+        state === 'accepted' ? 'confirmation email is on its way' : "couldn't send the confirmation email",
+      ));
+      expect(screen.queryByText('Something went wrong. Please try again.')).toBeNull();
+    } finally { notify.mockRestore(); }
   });
 });

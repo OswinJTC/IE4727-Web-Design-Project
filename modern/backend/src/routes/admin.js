@@ -5,7 +5,7 @@ import path from 'node:path';
 import { Router } from 'express';
 import multer from 'multer';
 import sharp from 'sharp';
-import nodemailer from 'nodemailer';
+import { sendOrderStatusEmail } from '../mailer.js';
 import { dishFromRow } from '../dishes.js';
 import { parseId, wrap } from '../http.js';
 
@@ -88,28 +88,6 @@ async function savePhoto(file, directory = uploadDirectory) {
 async function discardPhoto(image, directory = uploadDirectory) {
   if (image?.startsWith('/api/uploads/'))
     await unlink(path.join(directory, path.basename(image))).catch(() => {});
-}
-
-// No SMTP credentials are required to manage orders; a failed notification never undoes the saved status.
-async function sendOrderStatusEmail({ email, orderId, status }) {
-  const { SMTP_HOST, SMTP_USER, SMTP_PASSWORD, SMTP_FROM, SMTP_PORT = '587' } = process.env;
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASSWORD) return { state: 'unconfigured' };
-  const transport = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: Number(SMTP_PORT),
-    secure: SMTP_PORT === '465',
-    auth: { user: SMTP_USER, pass: SMTP_PASSWORD },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000,
-  });
-  const result = await transport.sendMail({
-    from: SMTP_FROM || SMTP_USER,
-    to: email,
-    subject: `FoodHub: Order #${orderId} is ${status}`,
-    text: `Your FoodHub order #${orderId} is now ${status}.\n\nThank you for ordering with FoodHub.`,
-  });
-  return { state: result.accepted?.length ? 'accepted' : 'failed' };
 }
 
 const adminDish = (row) => ({ ...dishFromRow(row), available: row.is_available });

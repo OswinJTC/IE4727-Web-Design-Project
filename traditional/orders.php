@@ -6,6 +6,9 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
+$checkoutNotice = $_SESSION['checkout_notice'] ?? null;
+unset($_SESSION['checkout_notice']);
+
 // Cancel a pending order. The WHERE clause is the whole rule: it must be this user's order
 // and still Pending, so other people's orders and orders already being prepared are untouched.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'cancel_order') {
@@ -96,6 +99,11 @@ $summary     = cart_summary();                           // for the cart badge
       <?php require __DIR__ . '/includes/auth_nav.php'; ?>
     </header>
     <main class="container">
+      <?php if ($checkoutNotice): ?>
+      <div class="checkout-notice" role="status">Order #<?= (int) $checkoutNotice['order_id'] ?> placed.
+        <?= $checkoutNotice['email_sent'] ? 'Your confirmation email is on its way.' : "We couldn't send the confirmation email. Your order is saved." ?>
+      </div>
+      <?php endif; ?>
       <div class="page-head"><h1>My orders</h1>
         <div class="filter-tabs">
           <?php foreach ($tabs as $key => $label): ?>

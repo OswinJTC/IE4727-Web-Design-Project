@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp, AISHA, where } from '../test/utils';
 
@@ -113,7 +113,7 @@ describe('Menu', () => {
   it('guest pressing + is sent to the login page', async () => {
     await renderApp('/menu?q=laksa');
     await userEvent.click(screen.getByRole('button', { name: 'Add Curry laksa to cart' }));
-    expect(where(screen)).toBe('/login');
+    await waitFor(() => expect(where(screen)).toBe('/login'));
   });
 
   it('member stepper: − and quantity only appear once the dish is in the cart; panel updates', async () => {

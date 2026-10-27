@@ -147,8 +147,9 @@ export function ShopProvider({ children }) {
 
     async placeOrder(details) {
       let orderId;
+      let confirmationEmail;
       try {
-        ({ orderId } = await api.placeOrder(details));
+        ({ orderId, confirmationEmail } = await api.placeOrder(details));
       } catch (err) {
         if (err.status === 401) {
           sessionEnded();
@@ -163,7 +164,7 @@ export function ShopProvider({ children }) {
       // From here the order exists on the server, so nothing below may report a failure
       setSummary(EMPTY_CART);
       await refreshOrders().catch(() => setOrdersReady(true));
-      return { ok: true, orderId };
+      return { ok: true, orderId, confirmationEmail };
     },
 
     // Returns true when the order was cancelled, false when the server refused (already being prepared, not yours)

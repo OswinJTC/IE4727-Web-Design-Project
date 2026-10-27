@@ -56,7 +56,13 @@ function CheckoutForm() {
       busy.current = false;
       setSubmitting(false);
       if (res.ok) {
-        toast.success(`Order #${res.orderId} placed. Thank you!`);
+        if (res.confirmationEmail === 'accepted') {
+          toast.success(`Order #${res.orderId} placed. Your confirmation email is on its way.`);
+        } else if (res.confirmationEmail) {
+          toast.warn(`Order #${res.orderId} placed. We couldn't send the confirmation email.`);
+        } else {
+          toast.success(`Order #${res.orderId} placed. Thank you!`);
+        }
         return navigate(`/orders?id=${res.orderId}`);
       }
       setErrors(res.errors);

@@ -16,6 +16,11 @@ Uploaded images go in the project's `uploads/` directory, which must be writable
 
 Notifications use PHPMailer with Gmail SMTP (`smtp.gmail.com`, port 587, STARTTLS). The sender and SMTP username are `oswin9089@gmail.com`. Recipients come from the customer attached to each order (`orders.user_id` → `users.email`).
 
+Customer checkout uses the same SMTP settings to send an automatic order confirmation after the database transaction
+commits. The plain-text receipt includes the order number, Pending status, dishes, quantities, saved prices, total,
+payment method, delivery address, phone, and optional kitchen notes. Email failures never undo a placed order or restore
+its cart. The customer sees whether the confirmation email could be sent on the redirected orders page.
+
 1. Run `composer install` after cloning the project.
 2. Enable 2-Step Verification on the sender's Google account and create an App Password at https://myaccount.google.com/apppasswords.
 3. Copy `includes/config.local.example.php` to `includes/config.local.php`, then paste the App Password into `smtp.password`. This local file is ignored by Git. Never use your normal Gmail password.
@@ -25,5 +30,9 @@ Notifications use PHPMailer with Gmail SMTP (`smtp.gmail.com`, port 587, STARTTL
 The order is saved before sending. The success message identifies the recipient only after SMTP accepts the message. Missing credentials, rejected authentication, or connection failures show a failure message while preserving the saved order status. Saving an unchanged status does not send another notification. SMTP acceptance does not guarantee inbox delivery; check spam too.
 
 Google instructions: https://support.google.com/accounts/answer/185833
+
+To verify checkout and email behavior without changing existing orders or sending real mail, run
+`python3 traditional/script/test_checkout_email.py` from the repository root while XAMPP MySQL is running.
+The check creates and removes its own `foodhub_checkout_test_*` database and captures mail through a fake transport.
 
 To test, place an order with a customer account whose email you can access, then change that order's status. No existing order is changed merely to test configuration.

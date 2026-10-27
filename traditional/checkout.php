@@ -1,5 +1,6 @@
 <?php
 require __DIR__ . '/includes/cart.php';
+require __DIR__ . '/includes/mailer.php';
 
 if (!isset($_SESSION['user_id'])) {
     header('Location: login_register.php');              // checking out needs an account
@@ -16,7 +17,7 @@ $notes   = '';
 // Delivery details start from the logged-in user's saved address and phone, and stay editable
 $address = '';
 $phone   = '';
-$stmt = db()->prepare('SELECT address, phone FROM users WHERE user_id = ?');
+$stmt = db()->prepare('SELECT full_name, email, address, phone FROM users WHERE user_id = ?');
 $stmt->execute([$_SESSION['user_id']]);
 $user = $stmt->get_result()->fetch_assoc();
 if ($user) {
@@ -49,19 +50,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'place
 
     if (!$errors) {
         try {
-            // Prices are read from the database again: the session copy may be out of date
-            $stmt  = db()->prepare('SELECT price FROM menu_items WHERE item_id = ?');
+            // Keep availability and current prices stable until the order and its lines are saved.
+            db()->begin_transaction();
+            $stmt  = db()->prepare('SELECT name, price FROM menu_items WHERE item_id = ? AND is_available = 1 LOCK IN SHARE MODE');
             $rows  = [];
             $total = 0.0;
             foreach ($summary['lines'] as $line) {
                 $stmt->execute([$line['item_id']]);
-                $price  = (float) ($stmt->get_result()->fetch_row()[0] ?? false);
-                $rows[] = ['item_id' => $line['item_id'], 'count' => $line['count'], 'price' => $price];
+                $dish = $stmt->get_result()->fetch_assoc();
+                if (!$dish) {
+                    throw new UnexpectedValueException('A dish is no longer available. Please review your cart.');
+                }
+                $price = (float) $dish['price'];
+                $rows[] = [
+                    'item_id' => $line['item_id'],
+                    'name' => $dish['name'],
+                    'quantity' => $line['count'],
+                    'unit_price' => $price,
+                ];
                 $total += $price * $line['count'];
             }
 
             // The order and its lines are saved together, or not at all
-            db()->begin_transaction();
             $stmt = db()->prepare(
                 'INSERT INTO orders (user_id, delivery_address, contact_phone, payment_method, notes, total_amount)
                  VALUES (?, ?, ?, ?, ?, ?)'
@@ -78,17 +88,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'place
 
             $stmt = db()->prepare('INSERT INTO order_items (order_id, item_id, quantity, unit_price) VALUES (?, ?, ?, ?)');
             foreach ($rows as $row) {
-                $stmt->execute([$orderId, $row['item_id'], $row['count'], number_format($row['price'], 2, '.', '')]);
+                $stmt->execute([$orderId, $row['item_id'], $row['quantity'], number_format($row['unit_price'], 2, '.', '')]);
             }
             db()->commit();
-
-            unset($_SESSION['cart']);                    // the cart is now an order
-            header('Location: orders.php?id=' . $orderId);   // Post/Redirect/Get, showing the new order
-            exit;
+        } catch (UnexpectedValueException $ex) {
+            db()->rollback();
+            $errors['form'] = $ex->getMessage();
         } catch (mysqli_sql_exception $ex) {
             db()->rollback();                            // no-op if the transaction never started
             error_log('Place order failed: ' . $ex->getMessage());
             $errors['form'] = 'Something went wrong. Please try again.';
+        }
+        if (!$errors) {
+            // The transaction is complete. Never roll it back or restore the cart because email fails.
+            unset($_SESSION['cart']);
+            try {
+                $sent = email_order_confirmation($user['email'], [
+                    'id' => $orderId,
+                    'name' => $user['full_name'],
+                    'items' => $rows,
+                    'total' => $total,
+                    'address' => $address,
+                    'phone' => $phone,
+                    'payment' => $payment,
+                    'notes' => $notes,
+                ]);
+            } catch (Throwable $ex) {
+                $sent = false;
+                error_log('FoodHub: checkout confirmation email failed for order #' . $orderId . '.');
+            }
+            $_SESSION['checkout_notice'] = ['order_id' => $orderId, 'email_sent' => $sent];
+            header('Location: orders.php?id=' . $orderId);
+            exit;
         }
     }
 }

@@ -176,12 +176,12 @@ describe('Login and register', () => {
     await userEvent.type(screen.getByLabelText('Email', { selector: '#login-email' }), AISHA);
     await userEvent.type(screen.getByLabelText('Password', { selector: '#login-password' }), 'nope');
     await userEvent.click(screen.getByRole('button', { name: 'Log in' }));
-    expect(screen.getByText('Incorrect email or password.')).toBeInTheDocument();
+    expect(await screen.findByText('Incorrect email or password.')).toBeInTheDocument();
     expect(where(screen)).toBe('/login');
     await userEvent.clear(screen.getByLabelText('Password', { selector: '#login-password' }));
     await userEvent.type(screen.getByLabelText('Password', { selector: '#login-password' }), 'Password123');
     await userEvent.click(screen.getByRole('button', { name: 'Log in' }));
-    expect(where(screen)).toBe('/');
+    await waitFor(() => expect(where(screen)).toBe('/'));
     expect(screen.getByText('Welcome, Aisha Lim')).toBeInTheDocument();
   });
 

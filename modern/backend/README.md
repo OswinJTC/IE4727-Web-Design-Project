@@ -27,9 +27,10 @@ Sample logins: `aisha@example.com` / `Password123` (customer), `admin@foodhub.te
 
 ## React administration
 
-The admin implementation lives in four files: `src/routes/admin.js` in the backend, and
+The admin screens and routes live in four files: `src/routes/admin.js` in the backend, and
 `src/pages/admin/ManageMenu.jsx`, `Admin.jsx`, and `admin.css` in the frontend.
 The Admin module contains the shared admin layout, UI helpers, and order management screen.
+`src/mailer.js` is shared by admin status emails and customer checkout confirmations.
 
 Log in at `http://localhost:5173/login` as `admin@foodhub.test` / `Password123`. Admins land on `/admin/orders`;
 `/admin/menu` manages dishes. `/admin` and `/admin/dashboard` also open order management, matching the traditional app.
@@ -57,6 +58,13 @@ The React app uses the modern backend's settings, independently of PHP's SMTP co
 Status changes are saved before sending. Missing settings or SMTP failures are reported while keeping the saved status.
 An unchanged status sends no duplicate email. SMTP acceptance is reported as acceptance, not guaranteed inbox delivery.
 
+Successful customer checkout also sends a confirmation to the logged-in account's email, using server-side order data:
+order number, Pending status, dish names, quantities, saved unit prices, total, payment method, delivery address, phone,
+and optional kitchen notes. The order and its lines are committed and the cart cleared before SMTP runs.
+`POST /api/orders` returns `{ orderId, confirmationEmail }`, where `confirmationEmail` is `accepted`, `failed`, or
+`unconfigured`. Email failure still returns 201 and the frontend confirms that the order was placed.
+Invalid checkout, transaction rollback, repeated submission with an emptied cart, and refreshing the orders page do not send confirmations.
+
 ## API
 
 | Method + path | Login | What it does |
@@ -83,15 +91,16 @@ The tests wipe and rebuild a database from `sql/schema.sql` + `sql/seed.sql` bef
 Two guards protect the real data: the tests refuse a database whose name does not contain "test", and refuse to start if
 `TEST_DATABASE_URL` equals `DATABASE_URL`.
 
-The new admin integration tests also support an explicit `ADMIN_TEST_DATABASE_URL`. In that mode they create a unique
-`foodhub_admin_test_*` schema, run only inside that schema, and remove it afterwards; existing schemas are untouched.
+Admin and checkout-email integration tests also support an explicit `INTEGRATION_DATABASE_URL` (or the older
+`ADMIN_TEST_DATABASE_URL`). In that mode they create a unique `foodhub_test_*` schema, run only inside that schema,
+and remove it afterwards; existing schemas are untouched. Tests inject a fake sender and never email sample accounts.
 For example, to check the admin API against the configured Supabase connection without changing its real data:
 
 ```sh
 node --env-file=.env --input-type=module <<'JS'
 import { spawnSync } from 'node:child_process';
-const result = spawnSync(process.execPath, ['node_modules/vitest/vitest.mjs', 'run', 'test/admin.test.js'], {
-  stdio: 'inherit', env: { ...process.env, ADMIN_TEST_DATABASE_URL: process.env.DATABASE_URL },
+const result = spawnSync(process.execPath, ['node_modules/vitest/vitest.mjs', 'run', 'test/admin.test.js', 'test/checkout-email.test.js'], {
+  stdio: 'inherit', env: { ...process.env, INTEGRATION_DATABASE_URL: process.env.DATABASE_URL },
 });
 process.exitCode = result.status ?? 1;
 JS
