@@ -117,6 +117,33 @@ function cart_removed_message(array $names): string
 }
 
 // Cart lines with subtotals, plus the number of items and the total price.
+//
+// Example return value (2 x Laksa at 8.50 and 1 x Teh Tarik at 3.20):
+//   [
+//       'lines' => [
+//           [
+//               'name'     => 'Laksa',                  // from the session cart line
+//               'category' => 'Mains',
+//               'image'    => 'https://example.com/laksa.jpg',
+//               'price'    => 8.5,                      // unit price (float)
+//               'count'    => 2,                        // quantity in the cart (max CART_MAX_PER_DISH)
+//               'item_id'  => 3,                        // menu_items.item_id (the session cart key)
+//               'subtotal' => 17.0,                     // price * count
+//           ],
+//           [
+//               'name'     => 'Teh Tarik',
+//               'category' => 'Drinks',
+//               'image'    => 'https://example.com/teh-tarik.jpg',
+//               'price'    => 3.2,
+//               'count'    => 1,
+//               'item_id'  => 12,
+//               'subtotal' => 3.2,
+//           ],
+//       ],
+//       'items' => 3,      // total quantity of all dishes (2 + 1), shown in the navbar badge
+//       'total' => 20.2,   // sum of all subtotals
+//   ]
+// An empty cart returns ['lines' => [], 'items' => 0, 'total' => 0.0].
 function cart_summary(): array
 {
     cart_drop_unavailable();

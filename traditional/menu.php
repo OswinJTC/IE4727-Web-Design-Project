@@ -2,6 +2,23 @@
 require __DIR__ . '/includes/functions.php';
 require __DIR__ . '/includes/cart.php';
 
+/*
+Params accepted (all via GET):
+  category   Mains | Sides | Drinks | Desserts. Anything else (or missing) means
+             "All". Whitelisted against the $tabs array, then used as a bound
+             parameter: category = ?.
+  q          Search text. Trimmed, cut to 100 chars. Matches dishes whose name
+             contains it (name LIKE ?). % and _ typed by the user are escaped so
+             they match literally instead of acting as wildcards. Sent by the
+             navbar search box (includes/search_bar.php, GET form to menu.php).
+  product_id Dish id to change in the cart. Positive integer, else ignored.
+  action     Used with product_id: add (default when omitted) | decrease | remove.
+             The menu page itself only produces add (+) and decrease (-);
+             remove is used by cart.php.
+  qty        Used with product_id + add: 1-20, default 1. (Max 20 per dish in
+             the cart overall.)
+*/
+
 // ?category=Mains|Sides|Drinks|Desserts marks that tab active; anything else means "All"
 $tabs     = ['Mains' => 0, 'Sides' => 0, 'Drinks' => 0, 'Desserts' => 0];
 $category = array_key_exists($_GET['category'] ?? '', $tabs) ? $_GET['category'] : '';
