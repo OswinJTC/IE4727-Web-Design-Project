@@ -2,7 +2,7 @@
 require __DIR__ . '/includes/functions.php';
 require __DIR__ . '/includes/db.php';
 
-$errors      = [];   // register: field => message, shown under each field
+$errors      = [];   // Registration errors; could see as $registerErrors.
 $old         = [];   // register: submitted values, so the form is not wiped on error
 $loginErrors = [];   // login: field => message
 $loginEmail  = '';   // login: submitted email, so it is not wiped on error
@@ -15,43 +15,43 @@ function field_class(array $errors, string $key): string
 
 $action = $_SERVER['REQUEST_METHOD'] === 'POST' ? ($_POST['action'] ?? '') : '';
 
-if ($action === 'register') {
-    $name    = trim($_POST['full_name'] ?? '');
-    $phone   = preg_replace('/\s+/', '', $_POST['phone'] ?? '');   // accept "9123 4567"
-    $email   = strtolower(trim($_POST['email'] ?? ''));
+if ($action === 'register') { 
+    $name    = trim($_POST['full_name'] ?? ''); 
+    $phone   = preg_replace('/\s+/', '', $_POST['phone'] ?? ''); // Remove spaces from the phone number
+    $email   = strtolower(trim($_POST['email'] ?? '')); 
     $address = trim($_POST['address'] ?? '');
     $pass    = $_POST['password'] ?? '';
     $confirm = $_POST['confirm'] ?? '';
     $old     = ['full_name' => $name, 'phone' => $phone, 'email' => $email, 'address' => $address];
 
-    // Same rules as js/login_register.js. The checks here are the ones that count.
-    if ($name === '') {
+    // Validate on the server, not just in the browser
+    if ($name === '') { 
         $errors['name'] = 'Enter your full name.';
-    } elseif (!preg_match('/^[A-Za-z ]+$/', $name) || strlen($name) > 100) {
+    } elseif (!preg_match('/^[A-Za-z ]+$/', $name) || strlen($name) > 100) { // Letters and spaces only, up to 100 characters
         $errors['name'] = 'Use letters and spaces only.';
     }
-    if (!preg_match('/^[689]\d{7}$/', $phone)) {
+    if (!preg_match('/^[689]\d{7}$/', $phone)) { // 8 digits starting with 6, 8 or 9
         $errors['phone'] = 'Enter an 8-digit Singapore number starting with 6, 8 or 9.';
     }
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 150) {
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 150) { // Check email format and length
         $errors['email'] = 'Enter a valid email address.';
     }
-    if (strlen($address) > 255) {
+    if (strlen($address) > 255) { // Optional address, up to 255 bytes
         $errors['address'] = 'Address must be 255 characters or fewer.';
     }
-    // 72 bytes is bcrypt's limit; anything longer would be silently truncated
-    if (strlen($pass) < 8 || strlen($pass) > 72 || !preg_match('/[A-Za-z]/', $pass) || !preg_match('/\d/', $pass)) {
+    // bcrypt accepts up to 72 bytes
+    if (strlen($pass) < 8 || strlen($pass) > 72 || !preg_match('/[A-Za-z]/', $pass) || !preg_match('/\d/', $pass)) { // 8-72 bytes, with a letter and a digit
         $errors['password'] = 'Use 8-72 characters with at least one letter and one digit.';
     }
-    if ($confirm === '') {
+    if ($confirm === '') { // Password confirmation is required
         $errors['confirm'] = 'Confirm your password.';
-    } elseif ($confirm !== $pass) {
+    } elseif ($confirm !== $pass) { // Both passwords must match
         $errors['confirm'] = 'Passwords do not match.';
     }
 
     if (!$errors) {
-        try {
-            // role is never read from the form: new accounts are always customers
+        try { 
+            // New accounts are always customers, never admins
             $stmt = db()->prepare(
                 "INSERT INTO users (full_name, email, phone, address, password_hash, role)
                  VALUES (?, ?, ?, ?, ?, 'customer')"
@@ -60,54 +60,53 @@ if ($action === 'register') {
                 $name,
                 $email,
                 $phone,
-                $address !== '' ? $address : null,
-                password_hash($pass, PASSWORD_DEFAULT),
+                $address !== '' ? $address : null, // Store NULL for an empty address
+                password_hash($pass, PASSWORD_DEFAULT), // Store a hash, not the plain password
             ]);
 
-            header('Location: register_success.php');   // Post/Redirect/Get
+            header('Location: register_success.php'); // Redirect after success to avoid resubmission on refresh
             exit;
-        } catch (mysqli_sql_exception $ex) {
-            if ($ex->getCode() === 1062) {            // 1062 = duplicate key: email is UNIQUE
+        } catch (mysqli_sql_exception $ex) { // Handle database errors
+            if ($ex->getCode() === 1062) { // Duplicate email violates the unique constraint
                 $errors['email'] = 'This email is already registered. Use the log in form.';
-            } else {
-                error_log('Register failed: ' . $ex->getMessage());
+            } else { // Other database errors
+                error_log('Register failed: ' . $ex->getMessage()); // Log details without showing them to the user
                 $errors['form'] = 'Something went wrong. Please try again.';
             }
         }
     }
-} elseif ($action === 'login') {
+} elseif ($action === 'login') { 
     $loginEmail = strtolower(trim($_POST['email'] ?? ''));
     $password   = $_POST['password'] ?? '';
 
-    // Only check the fields are filled in. Password strength rules belong to register;
-    // applying them here would reveal the policy and lock out older passwords.
-    if (!filter_var($loginEmail, FILTER_VALIDATE_EMAIL) || strlen($loginEmail) > 150) {
+    // Check only the email format first
+    if (!filter_var($loginEmail, FILTER_VALIDATE_EMAIL) || strlen($loginEmail) > 150) { // Reject an invalid or overly long email
         $loginErrors['email'] = 'Enter a valid email address.';
     }
-    if ($password === '') {
+    if ($password === '') { // Password is required
         $loginErrors['password'] = 'Enter your password.';
     }
 
-    if (!$loginErrors) {
-        try {
-            $stmt = db()->prepare('SELECT user_id, full_name, password_hash, role FROM users WHERE email = ?');
-            $stmt->execute([$loginEmail]);
-            $user = $stmt->get_result()->fetch_assoc();
+    if (!$loginErrors) { 
+        try { 
+            $stmt = db()->prepare('SELECT user_id, full_name, password_hash, role FROM users WHERE email = ?'); // Look up the account using a parameter
+            $stmt->execute([$loginEmail]); // Bind the email to the placeholder
+            $user = $stmt->get_result()->fetch_assoc(); // Fetch one account
 
-            if ($user && password_verify($password, $user['password_hash'])) {
-                session_regenerate_id(true);             // new session ID on login
-                $_SESSION['user_id'] = (int) $user['user_id'];
+            if ($user && password_verify($password, $user['password_hash'])) { // Account exists and password matches its hash
+                session_regenerate_id(true); // Generate a new session ID after login
+                $_SESSION['user_id'] = (int) $user['user_id']; // Remember the logged-in user
                 $_SESSION['name']    = $user['full_name'];
                 $_SESSION['role']    = $user['role'];
 
-                header('Location: ' . ($user['role'] === 'admin' ? 'admin/dashboard.php' : 'index.php'));
+                header('Location: ' . ($user['role'] === 'admin' ? 'admin/dashboard.php' : 'index.php')); // Send admins to the admin area, others to home
                 exit;
             }
 
-            // Same message whether the email or the password was wrong, so it does not reveal which emails exist
+            // Use one error message to avoid revealing existing accounts
             $loginErrors['form'] = 'Incorrect email or password.';
-        } catch (mysqli_sql_exception $ex) {
-            error_log('Login failed: ' . $ex->getMessage());
+        } catch (mysqli_sql_exception $ex) { // Handle database errors during login
+            error_log('Login failed: ' . $ex->getMessage()); // Log details without showing them to the user
             $loginErrors['form'] = 'Something went wrong. Please try again.';
         }
     }

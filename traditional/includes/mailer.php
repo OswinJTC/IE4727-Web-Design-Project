@@ -23,7 +23,7 @@ function foodhub_send_email(string $email, string $subject, string $body, string
     require_once $autoload;
 
     try {
-        $mail = new PHPMailer(true);
+        $mail = new PHPMailer(true); // PHPMailer with Gmail SMTP on port 587 using STARTTLS.
         $mail->isSMTP();
         $mail->Host = $smtp['host'];
         $mail->Port = (int) $smtp['port'];
