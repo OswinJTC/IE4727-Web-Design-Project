@@ -99,6 +99,7 @@ export function adminRouter(
   const router = Router();
   router.use(requireAdmin(pool));
 
+  // Get all dishes
   router.get(
     '/menu',
     wrap(async (req, res) => {
@@ -202,7 +203,7 @@ export function adminRouter(
       }
     }),
   );
-
+  // Get all orders
   router.get(
     '/orders',
     wrap(async (req, res) => {

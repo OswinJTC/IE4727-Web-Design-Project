@@ -156,10 +156,12 @@ function AdminWorkspace() {
     [navigate, sessionEnded],
   );
 
+  // Fetch menu and orders together from the API.
   const reload = useCallback(async () => {
     const version = ++requestVersion.current;
     setError('');
     try {
+      // Get all data.
       const [nextMenu, nextOrders] = await Promise.all([api.adminMenu(), api.adminOrders()]);
       if (version !== requestVersion.current) return;
       setMenu(nextMenu);
@@ -210,6 +212,8 @@ function AdminWorkspace() {
     );
 
   const pending = orders.filter((order) => order.status === 'Pending').length;
+  // Share data with admin child pages rendered through Outlet.
+  // Utilized by useAdmin()
   return (
     <AdminContext.Provider
       value={{
@@ -303,6 +307,7 @@ function AdminWorkspace() {
   );
 }
 
+// Check login and admin role before showing the workspace.
 export default function AdminLayout() {
   const { ready, user, loadError } = useShop();
   if (!ready)

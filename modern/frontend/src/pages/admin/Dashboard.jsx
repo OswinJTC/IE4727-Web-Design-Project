@@ -57,6 +57,10 @@ const tooltipStyle = { border: '1px solid #ded9d4', borderRadius: 10, fontSize: 
 
 // Orders are counted once. Category sales use historical line prices, never today's menu prices.
 export function buildDashboardData(menu, orders, days = 30, now = new Date()) {
+  
+  // 1. Create a daily Map with zero sales for the selected period.
+  // Example: '2026-11-04' -> {date: '2026-11-04', cents: 0, orders: 0}.
+  // For Sales Overview
   const today = calendarDate(now);
   const firstDay = new Date(`${today}T00:00:00Z`);
   firstDay.setUTCDate(firstDay.getUTCDate() - days + 1);
@@ -67,20 +71,36 @@ export function buildDashboardData(menu, orders, days = 30, now = new Date()) {
     const key = day.toISOString().slice(0, 10);
     daily.set(key, { date: key, cents: 0, orders: 0 });
   }
+
+  // 2. Index dishes by ID, and prepare category totals and status counts.
+  // Example: dishes.get(1).category = 'Mains'; categories.get('Mains').cents = 0; counts.Pending = 0.
+  // For Sales by Category, Orders by Status, Pending Orders card.
   const dishes = new Map(menu.map((dish) => [dish.id, dish]));
   const categories = new Map(CATEGORIES.map((name) => [name, { name, cents: 0, units: 0 }]));
   const counts = Object.fromEntries(STATUSES.map((status) => [status, 0]));
   let revenueCents = 0;
+
+  // 3. Count all order statuses, add non-cancelled orders to revenue.
+  // Example: a Pending order worth $12.50 adds 1 to counts.Pending and 1250 to revenueCents.
+  // For Total Revenue, Pending Orders cards, Orders by Status.
   for (const order of orders) {
     counts[order.status] += 1;
     if (order.status === 'Cancelled') continue;
     const cents = Math.round(Number(order.total) * 100);
     revenueCents += cents;
+
+    // 4. Add the order to its daily entry if its date is in the selected period.
+    // Example: one $12.50 order -> {date: '2026-11-04', cents: 1250, orders: 1}.
+    // For Sales Overview chart
     const day = daily.get(calendarDate(order.date));
     if (day) {
       day.cents += cents;
       day.orders += 1;
     }
+
+    // 5. Group item sales by category using saved checkout prices and quantities.
+    // Example: 2 Mains at $6.25 -> {name: 'Mains', cents: 1250, units: 2}.
+    // For Sales by Category chart
     for (const item of order.items) {
       const name = dishes.get(item.dishId)?.category ?? 'Uncategorised';
       if (!categories.has(name)) categories.set(name, { name, cents: 0, units: 0 });
@@ -89,6 +109,10 @@ export function buildDashboardData(menu, orders, days = 30, now = new Date()) {
       category.units += item.quantity;
     }
   }
+
+  // 6. Return summary totals, chart arrays and the latest 5 orders; convert cents to dollars.
+  // Example: sales contains {date: '2026-11-04', orders: 1, revenue: 12.50}.
+  // For All summary cards, all three charts and the Recent Orders table.
   return {
     revenue: revenueCents / 100,
     totalOrders: orders.length,
@@ -102,6 +126,7 @@ export function buildDashboardData(menu, orders, days = 30, now = new Date()) {
     })),
     sales: [...daily.values()].map(({ cents, ...day }) => ({ ...day, revenue: cents / 100 })),
     recentOrders: [...orders]
+      // Sort newest first, using the higher ID when dates match.
       .sort((a, b) => new Date(b.date) - new Date(a.date) || b.id - a.id)
       .slice(0, 5),
   };
@@ -234,10 +259,12 @@ function EmptyChart({ children }) {
   );
 }
 
-// Kept separate from fetching so the same view is easy to test and the admin panel owns data access.
+
+// Display summary cards and charts using menu and order data from the admin panel.
 export function DashboardView({ menu, orders, reload, refreshedAt }) {
   const [days, setDays] = useState(30);
   const [refreshing, setRefreshing] = useState(false);
+  // Build dashboard from here
   const data = useMemo(() => buildDashboardData(menu, orders, days), [menu, orders, days]);
   const activeStatuses = data.statuses.filter((status) => status.count > 0);
   const periodRevenue =
@@ -284,16 +311,19 @@ export function DashboardView({ menu, orders, reload, refreshedAt }) {
         </button>
       </header>
 
+      {/* Four summary cards */}
       <section
         aria-label="Store summary"
         className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-2 xl:grid-cols-4"
       >
+        {/* Total Revenue card. */}
         <MetricCard
           title="Total Revenue"
           value={currency(data.revenue)}
           hint="Non-cancelled order value · SGD"
           icon="revenue"
         />
+        {/* Total Orders card. */}
         <MetricCard
           title="Total Orders"
           value={data.totalOrders.toLocaleString('en-SG')}
@@ -301,6 +331,7 @@ export function DashboardView({ menu, orders, reload, refreshedAt }) {
           icon="orders"
           to="/admin/orders?status=all"
         />
+        {/* Total Products card. */}
         <MetricCard
           title="Total Products"
           value={data.totalProducts.toLocaleString('en-SG')}
@@ -308,6 +339,7 @@ export function DashboardView({ menu, orders, reload, refreshedAt }) {
           icon="products"
           to="/admin/menu"
         />
+        {/* Pending Orders card. */}
         <MetricCard
           title="Pending Orders"
           value={data.pendingOrders.toLocaleString('en-SG')}
@@ -318,6 +350,7 @@ export function DashboardView({ menu, orders, reload, refreshedAt }) {
       </section>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.8fr)_minmax(300px,1fr)]">
+        {/* Sales Overview: area chart. */}
         <ChartPanel
           title="Sales Overview"
           hint="Daily non-cancelled order value · SGD"
@@ -409,6 +442,7 @@ export function DashboardView({ menu, orders, reload, refreshedAt }) {
           />
         </ChartPanel>
 
+        {/* Orders by Status: doughnut chart. */}
         <ChartPanel title="Orders by Status" hint="All time · every order status">
           {data.totalOrders ? (
             <div className="relative mx-auto h-[220px] max-w-[320px]">
@@ -473,6 +507,7 @@ export function DashboardView({ menu, orders, reload, refreshedAt }) {
       </div>
 
       <div className="grid gap-5 xl:grid-cols-2">
+        {/* Sales by Category: bar chart. */}
         <ChartPanel
           title="Sales by Category"
           hint="All time · non-cancelled items at checkout prices"
@@ -546,6 +581,7 @@ export function DashboardView({ menu, orders, reload, refreshedAt }) {
           />
         </ChartPanel>
 
+        {/* Recent Orders: latest five orders in a table. */}
         <ChartPanel
           title="Recent Orders"
           hint="The five most recent orders"
@@ -602,6 +638,7 @@ export function DashboardView({ menu, orders, reload, refreshedAt }) {
 }
 
 export default function Dashboard() {
+  // Get data using admin.jsx AdminContext.Provider
   const { menu, orders, reload, dataReady, refreshedAt, error } = useAdmin();
   if (!dataReady)
     return (
